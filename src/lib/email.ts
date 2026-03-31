@@ -1,14 +1,5 @@
-import nodemailer from 'nodemailer';
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'localhost',
-  port: parseInt(process.env.SMTP_PORT || '1025'),
-  secure: false,
-  auth: process.env.SMTP_USER ? {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  } : undefined,
-});
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'KalendR <onboarding@resend.dev>';
 
 interface EmailOptions {
   to: string;
@@ -20,16 +11,36 @@ interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[EMAIL] To: ${options.to}, Subject: ${options.subject}`);
+    if (!RESEND_API_KEY) {
+      console.log(`[EMAIL - NO API KEY] To: ${options.to}, Subject: ${options.subject}`);
       console.log(`[EMAIL] Body preview: ${options.text?.substring(0, 200) || 'HTML only'}`);
       return true;
     }
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'noreply@kalendr.com',
-      ...options,
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to: [options.to],
+        subject: options.subject,
+        html: options.html,
+        text: options.text,
+        reply_to: options.replyTo,
+      }),
     });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Resend API error:', error);
+      return false;
+    }
+
+    const data = await response.json();
+    console.log(`[EMAIL SENT] To: ${options.to}, ID: ${data.id}`);
     return true;
   } catch (error) {
     console.error('Failed to send email:', error);
