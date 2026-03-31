@@ -6,8 +6,9 @@ export async function GET(req: NextRequest) {
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io'}/api/auth/callback/microsoft`;
 
   if (!clientId) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
     return NextResponse.redirect(
-      new URL('/login?error=Microsoft+sign+in+is+not+configured+yet', req.url)
+      new URL('/login?error=Microsoft+sign+in+is+not+configured+yet', appUrl)
     );
   }
 

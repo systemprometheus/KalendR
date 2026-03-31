@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const tenantId = process.env.MICROSOFT_TENANT_ID || 'common';
 
   if (error || !code) {
-    return NextResponse.redirect(new URL('/login?error=Microsoft+authentication+cancelled', req.url));
+    return NextResponse.redirect(new URL('/login?error=Microsoft+authentication+cancelled', appUrl));
   }
 
   try {
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
     if (!tokens.access_token) {
       console.error('Microsoft token exchange failed:', tokens);
-      return NextResponse.redirect(new URL('/login?error=Microsoft+authentication+failed', req.url));
+      return NextResponse.redirect(new URL('/login?error=Microsoft+authentication+failed', appUrl));
     }
 
     // Get user info from Microsoft Graph
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     const email = msUser.mail || msUser.userPrincipalName;
 
     if (!email) {
-      return NextResponse.redirect(new URL('/login?error=Could+not+get+email+from+Microsoft', req.url));
+      return NextResponse.redirect(new URL('/login?error=Could+not+get+email+from+Microsoft', appUrl));
     }
 
     // Find or create user
@@ -80,12 +80,12 @@ export async function GET(req: NextRequest) {
     });
 
     if (!user.onboardingComplete) {
-      return NextResponse.redirect(new URL('/onboarding', req.url));
+      return NextResponse.redirect(new URL('/onboarding', appUrl));
     }
 
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    return NextResponse.redirect(new URL('/dashboard', appUrl));
   } catch (err: any) {
     console.error('Microsoft OAuth callback error:', err);
-    return NextResponse.redirect(new URL('/login?error=Authentication+failed', req.url));
+    return NextResponse.redirect(new URL('/login?error=Authentication+failed', appUrl));
   }
 }

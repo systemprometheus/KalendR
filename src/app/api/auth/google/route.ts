@@ -6,8 +6,9 @@ export async function GET(req: NextRequest) {
 
   if (!clientId) {
     // OAuth not configured — redirect back to login with error
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
     return NextResponse.redirect(
-      new URL('/login?error=Google+sign+in+is+not+configured+yet', req.url)
+      new URL('/login?error=Google+sign+in+is+not+configured+yet', appUrl)
     );
   }
 

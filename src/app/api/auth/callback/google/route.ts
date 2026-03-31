@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
 
   if (error || !code) {
-    return NextResponse.redirect(new URL('/login?error=Google+authentication+cancelled', req.url));
+    return NextResponse.redirect(new URL('/login?error=Google+authentication+cancelled', appUrl));
   }
 
   try {
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     if (!tokens.access_token) {
       console.error('Google token exchange failed:', tokens);
-      return NextResponse.redirect(new URL('/login?error=Google+authentication+failed', req.url));
+      return NextResponse.redirect(new URL('/login?error=Google+authentication+failed', appUrl));
     }
 
     // Get user info
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     const googleUser = await userInfoRes.json();
 
     if (!googleUser.email) {
-      return NextResponse.redirect(new URL('/login?error=Could+not+get+email+from+Google', req.url));
+      return NextResponse.redirect(new URL('/login?error=Could+not+get+email+from+Google', appUrl));
     }
 
     // Find or create user
@@ -81,12 +81,12 @@ export async function GET(req: NextRequest) {
 
     // Redirect based on onboarding status
     if (!user.onboardingComplete) {
-      return NextResponse.redirect(new URL('/onboarding', req.url));
+      return NextResponse.redirect(new URL('/onboarding', appUrl));
     }
 
-    return NextResponse.redirect(new URL('/dashboard', req.url));
+    return NextResponse.redirect(new URL('/dashboard', appUrl));
   } catch (err: any) {
     console.error('Google OAuth callback error:', err);
-    return NextResponse.redirect(new URL('/login?error=Authentication+failed', req.url));
+    return NextResponse.redirect(new URL('/login?error=Authentication+failed', appUrl));
   }
 }
