@@ -238,7 +238,7 @@ export default function EventTypesPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Input label="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g., Book a Demo" required />
-            <Input label="URL Slug" value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })} placeholder="book-a-demo" helperText={`kalendr.com/${user?.slug}/${form.slug || '...'}`} />
+            <Input label="URL Slug" value={form.slug} onChange={e => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })} placeholder="book-a-demo" helperText={`kalendr.io/${user?.slug}/${form.slug || '...'}`} />
           </div>
 
           <Input label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Brief description shown to invitees" />

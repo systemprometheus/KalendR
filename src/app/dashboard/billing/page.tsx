@@ -1,13 +1,15 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CreditCard, Check, Zap } from 'lucide-react';
+import { CreditCard, Check, Zap, ExternalLink } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useSearchParams } from 'next/navigation';
 
 const PLANS = [
   {
     name: 'Free',
+    key: 'free',
     price: 0,
     features: ['1 event type', '1 connected calendar', 'Basic scheduling', 'Email notifications'],
     cta: 'Current Plan',
@@ -15,19 +17,22 @@ const PLANS = [
   },
   {
     name: 'Standard',
-    price: 12,
+    key: 'standard',
+    price: 9,
     features: ['Unlimited event types', '6 connected calendars', 'Custom branding', 'Routing forms', 'Reminders & follow-ups', 'Remove branding'],
     cta: 'Upgrade',
     popular: true,
   },
   {
     name: 'Teams',
-    price: 20,
+    key: 'teams',
+    price: 15,
     features: ['Everything in Standard', 'Round-robin scheduling', 'Collective events', 'Team management', 'Admin controls', 'Salesforce integration'],
     cta: 'Upgrade',
   },
   {
     name: 'Enterprise',
+    key: 'enterprise',
     price: null,
     features: ['Everything in Teams', 'SSO/SAML', 'Advanced routing', 'Dedicated support', 'Custom SLA', 'API access'],
     cta: 'Contact Sales',
@@ -37,21 +42,75 @@ const PLANS = [
 export default function BillingPage() {
   const [org, setOrg] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(data => {
       setOrg(data.organization);
       setLoading(false);
     });
-  }, []);
 
-  const handleUpgrade = (plan: string) => {
-    alert(`Stripe checkout would open for the ${plan} plan. Set STRIPE_SECRET_KEY to enable billing.`);
+    if (searchParams.get('success') === 'true') {
+      const plan = searchParams.get('plan');
+      setSuccessMessage(`Successfully upgraded to ${plan || 'paid'} plan! Your subscription is now active.`);
+      // Refresh user data
+      setTimeout(() => {
+        fetch('/api/auth/me').then(r => r.json()).then(data => {
+          setOrg(data.organization);
+        });
+      }, 2000);
+    }
+  }, [searchParams]);
+
+  const handleUpgrade = async (planKey: string) => {
+    if (planKey === 'enterprise') {
+      window.location.href = 'mailto:sales@kalendr.io?subject=Enterprise%20Plan%20Inquiry';
+      return;
+    }
+
+    setUpgrading(planKey);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planKey }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to create checkout session');
+      }
+    } catch (error) {
+      alert('Failed to start checkout. Please try again.');
+    } finally {
+      setUpgrading(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      const res = await fetch('/api/stripe/portal', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      alert('Failed to open billing portal.');
+    }
   };
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>;
   }
+
+  const currentPlan = org?.plan || 'free';
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -60,22 +119,37 @@ export default function BillingPage() {
         <p className="text-gray-500 mt-1">Manage your subscription and billing</p>
       </div>
 
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-green-800">
+          <Check className="w-4 h-4 inline mr-2" />
+          {successMessage}
+        </div>
+      )}
+
       <Card>
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-gray-900">Current Plan</h2>
             <p className="text-sm text-gray-500 mt-1">
-              You're on the <span className="font-medium capitalize">{org?.plan || 'Free'}</span> plan
+              You&apos;re on the <span className="font-medium capitalize">{currentPlan}</span> plan
               {org?.planSeats ? ` with ${org.planSeats} seat(s)` : ''}
             </p>
           </div>
-          <Badge variant="info" className="text-sm px-3 py-1 capitalize">{org?.plan || 'Free'}</Badge>
+          <div className="flex items-center gap-3">
+            <Badge variant="info" className="text-sm px-3 py-1 capitalize">{currentPlan}</Badge>
+            {currentPlan !== 'free' && org?.stripeCustomerId && (
+              <Button variant="outline" size="sm" onClick={handleManageSubscription}>
+                <ExternalLink className="w-3 h-3 mr-1" />
+                Manage Subscription
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {PLANS.map(plan => {
-          const isCurrent = (org?.plan || 'free') === plan.name.toLowerCase();
+          const isCurrent = currentPlan === plan.key;
           return (
             <Card key={plan.name} className={`relative ${plan.popular ? 'border-[#0069ff] border-2' : ''}`}>
               {plan.popular && (
@@ -103,10 +177,10 @@ export default function BillingPage() {
                 <Button
                   variant={isCurrent ? 'outline' : plan.popular ? 'primary' : 'secondary'}
                   className="w-full"
-                  disabled={isCurrent}
-                  onClick={() => handleUpgrade(plan.name)}
+                  disabled={isCurrent || upgrading === plan.key}
+                  onClick={() => handleUpgrade(plan.key)}
                 >
-                  {isCurrent ? 'Current Plan' : plan.cta}
+                  {upgrading === plan.key ? 'Redirecting...' : isCurrent ? 'Current Plan' : plan.cta}
                 </Button>
               </div>
             </Card>

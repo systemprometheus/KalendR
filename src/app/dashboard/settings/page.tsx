@@ -91,7 +91,7 @@ export default function SettingsPage() {
           <Link2 className="w-5 h-5 text-gray-400" /> Booking URL
         </h2>
         <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden">
-          <span className="px-3 py-2 bg-gray-50 text-sm text-gray-500 border-r border-gray-300">kalendr.com/</span>
+          <span className="px-3 py-2 bg-gray-50 text-sm text-gray-500 border-r border-gray-300">kalendr.io/</span>
           <input
             type="text"
             value={form.slug}

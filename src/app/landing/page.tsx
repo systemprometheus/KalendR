@@ -138,7 +138,7 @@ export default function LandingPage() {
             <p className="text-lg text-gray-500">Start free, upgrade as your team grows</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[
               {
                 name: 'Free',
@@ -150,13 +150,22 @@ export default function LandingPage() {
                 highlighted: false,
               },
               {
-                name: 'Teams',
-                price: '$20',
+                name: 'Standard',
+                price: '$9',
                 period: '/seat/month',
-                description: 'For growing sales teams',
-                features: ['Unlimited event types', 'Round-robin scheduling', 'Routing forms', 'Custom branding', 'Workflow automation', 'Team management', 'Calendar integrations'],
+                description: 'For professionals',
+                features: ['Unlimited event types', 'Custom branding', 'Routing forms', 'Reminders & follow-ups', 'Remove branding', '6 connected calendars'],
                 cta: 'Start Free Trial',
                 highlighted: true,
+              },
+              {
+                name: 'Teams',
+                price: '$15',
+                period: '/seat/month',
+                description: 'For growing sales teams',
+                features: ['Everything in Standard', 'Round-robin scheduling', 'Workflow automation', 'Team management', 'Calendar integrations', 'Admin controls'],
+                cta: 'Start Free Trial',
+                highlighted: false,
               },
               {
                 name: 'Enterprise',

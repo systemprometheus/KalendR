@@ -169,7 +169,7 @@ export default function OnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Your URL</label>
                 <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden">
                   <span className="px-3 py-2 bg-gray-50 text-sm text-gray-500 border-r border-gray-300">
-                    kalendr.com/
+                    kalendr.io/
                   </span>
                   <input
                     type="text"
