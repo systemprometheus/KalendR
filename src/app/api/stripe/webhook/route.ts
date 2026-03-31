@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { db } from '@/lib/db';
+import { users } from '@/lib/db';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-12-18.acacia' as any,
@@ -31,9 +31,9 @@ export async function POST(req: NextRequest) {
         const plan = session.metadata?.plan;
 
         if (userId && plan) {
-          const user = await db.users.findById(userId);
+          const user = users().findById(userId);
           if (user) {
-            await db.users.update(userId, {
+            users().update(userId, {
               plan,
               stripeCustomerId: session.customer as string,
               stripeSubscriptionId: session.subscription as string,
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
         if (userId) {
           const status = subscription.status;
-          await db.users.update(userId, {
+          users().update(userId, {
             subscriptionStatus: status,
           });
           console.log(`User ${userId} subscription status: ${status}`);
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
         const userId = subscription.metadata?.userId;
 
         if (userId) {
-          await db.users.update(userId, {
+          users().update(userId, {
             plan: 'free',
             subscriptionStatus: 'canceled',
             stripeSubscriptionId: null,
@@ -79,12 +79,12 @@ export async function POST(req: NextRequest) {
         const subscriptionId = invoice.subscription as string;
 
         if (subscriptionId) {
-          const users = await db.users.findMany({ stripeSubscriptionId: subscriptionId });
-          if (users.length > 0) {
-            await db.users.update(users[0].id, {
+          const matchedUsers = users().findMany({ where: { stripeSubscriptionId: subscriptionId } });
+          if (matchedUsers.length > 0) {
+            users().update(matchedUsers[0].id, {
               subscriptionStatus: 'past_due',
             });
-            console.log(`User ${users[0].id} payment failed, marked past_due`);
+            console.log(`User ${matchedUsers[0].id} payment failed, marked past_due`);
           }
         }
         break;

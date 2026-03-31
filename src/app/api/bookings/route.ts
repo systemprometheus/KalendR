@@ -101,11 +101,11 @@ export async function POST(req: NextRequest) {
     let meetingUrl = null;
 
     if (locationType === 'google_meet') {
-      meetingUrl = `https://meet.google.com/placeholder-${Math.random().toString(36).substring(2, 10)}`;
-      locationValue = meetingUrl;
+      // TODO: Create real Google Meet link via Calendar API when Google integration is connected
+      locationValue = 'Google Meet link will be provided in calendar invite';
     } else if (locationType === 'zoom') {
-      meetingUrl = `https://zoom.us/j/placeholder-${Math.random().toString(36).substring(2, 10)}`;
-      locationValue = meetingUrl;
+      // TODO: Create real Zoom meeting via Zoom API when Zoom integration is connected
+      locationValue = 'Zoom link will be provided in calendar invite';
     }
 
     const booking = bookings().create({

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
+import { users } from '@/lib/db';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -9,12 +9,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession(req);
-    if (!session) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await db.users.findById(session.userId);
+    // Re-fetch full user record (getCurrentUser strips some fields)
+    const user = users().findById(currentUser.id);
     if (!user?.stripeCustomerId) {
       return NextResponse.json({ error: 'No active subscription' }, { status: 400 });
     }

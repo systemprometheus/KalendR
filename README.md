@@ -104,7 +104,7 @@ SMTP_HOST=""
 SMTP_PORT="587"
 SMTP_USER=""
 SMTP_PASS=""
-EMAIL_FROM="noreply@kalendr.com"
+EMAIL_FROM="KalendR <noreply@kalendr.io>"
 
 # Calendar OAuth (optional - enables real calendar sync)
 GOOGLE_CLIENT_ID=""

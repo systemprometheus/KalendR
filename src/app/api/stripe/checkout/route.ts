@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -19,8 +19,8 @@ const PRICE_MAP: Record<string, { priceId: string; name: string }> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession(req);
-    if (!session) {
+    const user = await getCurrentUser();
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -47,14 +47,14 @@ export async function POST(req: NextRequest) {
       ],
       success_url: `${appUrl}/dashboard/billing?success=true&plan=${plan}`,
       cancel_url: `${appUrl}/dashboard/billing?canceled=true`,
-      customer_email: session.email,
+      customer_email: user.email,
       metadata: {
-        userId: session.userId,
+        userId: user.id,
         plan,
       },
       subscription_data: {
         metadata: {
-          userId: session.userId,
+          userId: user.id,
           plan,
         },
       },
