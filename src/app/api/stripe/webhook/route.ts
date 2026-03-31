@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
+        const subscriptionId = (invoice as any).subscription as string;
 
         if (subscriptionId) {
           const matchedUsers = users().findMany({ where: { stripeSubscriptionId: subscriptionId } });
