@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   let code = '';
 
   if (type === 'inline') {
-    code = `<!-- KalendR Inline Embed -->
+    code = `<!-- kalendr.io Inline Embed -->
 <div id="kalendr-embed" style="min-width:320px;height:700px;"></div>
 <script>
 (function() {
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 })();
 </script>`;
   } else if (type === 'popup-widget') {
-    code = `<!-- KalendR Popup Widget -->
+    code = `<!-- kalendr.io Popup Widget -->
 <script>
 (function() {
   var btn = document.createElement('button');
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 })();
 </script>`;
   } else if (type === 'popup-text') {
-    code = `<!-- KalendR Popup Link -->
+    code = `<!-- kalendr.io Popup Link -->
 <a href="#" onclick="(function(){var o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';o.onclick=function(e){if(e.target===o)document.body.removeChild(o)};var i=document.createElement('iframe');i.src='${embedUrl}';i.style.cssText='width:90%;max-width:900px;height:85vh;border:none;border-radius:16px;background:white;';o.appendChild(i);document.body.appendChild(o)})();return false;" style="color:#0069ff;font-weight:600;text-decoration:none;">
   Book a Demo
 </a>`;

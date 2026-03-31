@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'KalendR - Scheduling for Inbound Sales Teams',
+  title: 'kalendr.io - Scheduling for Inbound Sales Teams',
   description: 'Book more qualified demos. Route leads to the right rep. Eliminate scheduling friction.',
 };
 

@@ -2,6 +2,7 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, ArrowRight, Check, GitBranch } from 'lucide-react';
+import Logo from '@/components/ui/logo';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -95,11 +96,8 @@ export default function RoutingFormPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-sm border max-w-lg w-full p-8 animate-fade-in">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-8 h-8 bg-[#0069ff] rounded-lg flex items-center justify-center">
-            <Calendar className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-lg font-bold text-gray-900">KalendR</span>
+        <div className="mb-6">
+          <Logo size="md" />
         </div>
 
         <h1 className="text-xl font-bold text-gray-900 mb-2">{form.name}</h1>
@@ -153,7 +151,7 @@ export default function RoutingFormPage({ params }: PageProps) {
           </button>
         </form>
 
-        <p className="text-xs text-center text-gray-400 mt-6">Powered by KalendR</p>
+        <p className="text-xs text-center text-gray-400 mt-6">Powered by kalendr.io</p>
       </div>
     </div>
   );

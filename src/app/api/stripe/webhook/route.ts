@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { users } from '@/lib/db';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia' as any,
 });
 
@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
   }
 
   let event: Stripe.Event;
+  const stripe = getStripe();
 
   try {
     event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET);

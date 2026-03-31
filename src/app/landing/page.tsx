@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { Calendar, ArrowRight, CheckCircle, Users, GitBranch, Zap, Globe, Shield, BarChart3, Clock, Code, Mail } from 'lucide-react';
+import Logo from '@/components/ui/logo';
+import { GoogleIcon, MicrosoftIcon } from '@/components/ui/brand-icons';
 
 export default function LandingPage() {
   return (
@@ -8,12 +10,7 @@ export default function LandingPage() {
       <nav className="border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#0069ff] rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-900">KalendR</span>
-            </div>
+            <Logo size="md" />
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-sm text-gray-600 hover:text-gray-900">Features</a>
               <a href="#how-it-works" className="text-sm text-gray-600 hover:text-gray-900">How It Works</a>
@@ -45,15 +42,29 @@ export default function LandingPage() {
           <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
             The scheduling platform that routes inbound leads to the right rep, eliminates back-and-forth, and helps your team book more qualified demos from every channel.
           </p>
-          <div className="flex items-center justify-center gap-4">
-            <Link href="/signup" className="inline-flex items-center gap-2 bg-[#0069ff] text-white px-8 py-3.5 rounded-lg font-medium text-lg hover:bg-[#0052cc] transition-colors shadow-lg shadow-blue-500/25">
-              Start Free <ArrowRight className="w-5 h-5" />
+          <div className="flex flex-col items-center gap-3 max-w-md mx-auto">
+            <Link href="/signup?provider=google" className="w-full inline-flex items-center justify-center gap-3 bg-[#0069ff] text-white px-8 py-3.5 rounded-lg font-medium text-lg hover:bg-[#0052cc] transition-colors shadow-lg shadow-blue-500/25">
+              <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
+                <GoogleIcon className="w-5 h-5" />
+              </div>
+              Sign up with Google
             </Link>
-            <a href="#how-it-works" className="inline-flex items-center gap-2 text-gray-600 px-6 py-3.5 rounded-lg font-medium text-lg hover:text-gray-900 hover:bg-gray-100 transition-colors">
-              See How It Works
-            </a>
+            <Link href="/signup?provider=microsoft" className="w-full inline-flex items-center justify-center gap-3 bg-[#1a1a2e] text-white px-8 py-3.5 rounded-lg font-medium text-lg hover:bg-[#16162a] transition-colors">
+              <div className="w-8 h-8 bg-white rounded flex items-center justify-center">
+                <MicrosoftIcon className="w-5 h-5" />
+              </div>
+              Sign up with Microsoft
+            </Link>
+            <div className="flex items-center gap-3 w-full my-1">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-sm text-gray-400">OR</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Link href="/signup" className="text-[#0069ff] font-medium hover:underline">Sign up free with email.</Link>
+              <span className="text-gray-400">No credit card required.</span>
+            </div>
           </div>
-          <p className="text-sm text-gray-400 mt-4">Free forever. No credit card required.</p>
         </div>
       </section>
 
@@ -74,7 +85,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Everything your sales team needs to book more demos</h2>
-            <p className="text-lg text-gray-500 max-w-2xl mx-auto">From lead qualification to demo booking to follow-up, KalendR handles the entire inbound scheduling workflow.</p>
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto">From lead qualification to demo booking to follow-up, kalendr.io handles the entire inbound scheduling workflow.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -221,11 +232,8 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-7 h-7 bg-[#0069ff] rounded-lg flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-lg font-bold text-white">KalendR</span>
+              <div className="mb-4">
+                <Logo size="sm" variant="light" />
               </div>
               <p className="text-sm text-gray-400">Scheduling software built for inbound sales teams.</p>
             </div>
@@ -258,7 +266,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
-            &copy; 2026 KalendR. All rights reserved.
+            &copy; 2026 kalendr.io. All rights reserved.
           </div>
         </div>
       </footer>

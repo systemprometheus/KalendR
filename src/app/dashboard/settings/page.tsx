@@ -5,17 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-
-const TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern Time' },
-  { value: 'America/Chicago', label: 'Central Time' },
-  { value: 'America/Denver', label: 'Mountain Time' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time' },
-  { value: 'Europe/London', label: 'London (GMT)' },
-  { value: 'Europe/Paris', label: 'Paris (CET)' },
-  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-  { value: 'UTC', label: 'UTC' },
-];
+import { TIMEZONES, formatTimezoneLabel } from '@/lib/timezones';
 
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
@@ -105,7 +95,7 @@ export default function SettingsPage() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Globe className="w-5 h-5 text-gray-400" /> Timezone
         </h2>
-        <Select value={form.timezone} onChange={e => setForm({ ...form, timezone: e.target.value })} options={TIMEZONES} />
+        <Select value={form.timezone} onChange={e => setForm({ ...form, timezone: e.target.value })} options={TIMEZONES.map(tz => ({ value: tz.value, label: formatTimezoneLabel(tz) }))} />
       </Card>
 
       <div className="flex items-center justify-end gap-3">

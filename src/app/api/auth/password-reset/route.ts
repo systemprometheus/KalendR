@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     await sendEmail({
       to: user.email,
-      subject: 'Reset your KalendR password',
+      subject: 'Reset your kalendr.io password',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #0069ff; padding: 24px; text-align: center;">

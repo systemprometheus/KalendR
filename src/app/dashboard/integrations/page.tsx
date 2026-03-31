@@ -1,19 +1,23 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Link2, Calendar, Video, Mail, ChevronRight, CheckCircle, AlertCircle } from 'lucide-react';
+import { Link2, CheckCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  GoogleCalendarIcon, MicrosoftOutlookIcon, ZoomIcon, GoogleMeetIcon,
+  StripeIcon, SalesforceIcon, HubSpotIcon, SlackIcon
+} from '@/components/ui/brand-icons';
 
 const INTEGRATIONS = [
-  { id: 'google', name: 'Google Calendar', description: 'Sync events, check availability, and add new meetings', icon: '📅', category: 'Calendars', provider: 'google' },
-  { id: 'microsoft', name: 'Microsoft Outlook', description: 'Connect your Outlook calendar for availability and events', icon: '📧', category: 'Calendars', provider: 'microsoft' },
-  { id: 'zoom', name: 'Zoom', description: 'Automatically generate Zoom meeting links', icon: '🎥', category: 'Video Conferencing', provider: 'zoom' },
-  { id: 'google_meet', name: 'Google Meet', description: 'Create Google Meet links for virtual meetings', icon: '📹', category: 'Video Conferencing', provider: 'google_meet' },
-  { id: 'stripe', name: 'Stripe', description: 'Collect payments when meetings are booked', icon: '💳', category: 'Payments', provider: 'stripe' },
-  { id: 'salesforce', name: 'Salesforce', description: 'Sync booking data with your CRM', icon: '☁️', category: 'CRM', provider: 'salesforce' },
-  { id: 'hubspot', name: 'HubSpot', description: 'Connect booking data with HubSpot contacts', icon: '🟠', category: 'CRM', provider: 'hubspot' },
-  { id: 'slack', name: 'Slack', description: 'Get booking notifications in Slack channels', icon: '💬', category: 'Notifications', provider: 'slack' },
+  { id: 'google', name: 'Google Calendar', description: 'Sync events, check availability, and add new meetings', Icon: GoogleCalendarIcon, category: 'Calendars', provider: 'google' },
+  { id: 'microsoft', name: 'Microsoft Outlook', description: 'Connect your Outlook calendar for availability and events', Icon: MicrosoftOutlookIcon, category: 'Calendars', provider: 'microsoft' },
+  { id: 'zoom', name: 'Zoom', description: 'Automatically generate Zoom meeting links', Icon: ZoomIcon, category: 'Video Conferencing', provider: 'zoom' },
+  { id: 'google_meet', name: 'Google Meet', description: 'Create Google Meet links for virtual meetings', Icon: GoogleMeetIcon, category: 'Video Conferencing', provider: 'google_meet' },
+  { id: 'stripe', name: 'Stripe', description: 'Collect payments when meetings are booked', Icon: StripeIcon, category: 'Payments', provider: 'stripe' },
+  { id: 'salesforce', name: 'Salesforce', description: 'Sync booking data with your CRM', Icon: SalesforceIcon, category: 'CRM', provider: 'salesforce' },
+  { id: 'hubspot', name: 'HubSpot', description: 'Connect booking data with HubSpot contacts', Icon: HubSpotIcon, category: 'CRM', provider: 'hubspot' },
+  { id: 'slack', name: 'Slack', description: 'Get booking notifications in Slack channels', Icon: SlackIcon, category: 'Notifications', provider: 'slack' },
 ];
 
 export default function IntegrationsPage() {
@@ -80,11 +84,14 @@ export default function IntegrationsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {INTEGRATIONS.filter(i => i.category === category).map(integration => {
               const connected = isConnected(integration.provider);
+              const IconComponent = integration.Icon;
               return (
                 <Card key={integration.id} className="hover:border-gray-300 transition-colors">
                   <div className="flex items-start gap-4">
-                    <div className="text-2xl">{integration.icon}</div>
-                    <div className="flex-1">
+                    <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
+                      <IconComponent className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium text-gray-900">{integration.name}</h3>
                         {connected && <Badge variant="success">Connected</Badge>}

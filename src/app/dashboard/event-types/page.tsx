@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Copy, ExternalLink, MoreVertical, Pencil, Trash2, ToggleLeft, ToggleRight, LayoutGrid, Users, RefreshCw, UserCheck, Archive } from 'lucide-react';
+import { Plus, Copy, ExternalLink, MoreVertical, Pencil, Trash2, ToggleLeft, ToggleRight, LayoutGrid, Users, RefreshCw, UserCheck, Archive, Search, Link2, HelpCircle, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,22 @@ const EVENT_KINDS = [
   { value: 'collective', label: 'Collective' },
 ];
 
+const LOCATION_LABELS: Record<string, string> = {
+  google_meet: 'Google Meet',
+  zoom: 'Zoom',
+  phone: 'Phone',
+  in_person: 'In Person',
+  custom: 'Custom',
+  ask_invitee: 'Ask Invitee',
+};
+
+const KIND_LABELS: Record<string, string> = {
+  one_on_one: 'One-on-One',
+  group: 'Group',
+  round_robin: 'Round Robin',
+  collective: 'Collective',
+};
+
 export default function EventTypesPage() {
   const router = useRouter();
   const [eventTypes, setEventTypes] = useState<any[]>([]);
@@ -34,6 +50,9 @@ export default function EventTypesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('event_types');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -132,71 +151,169 @@ export default function EventTypesPage() {
     setMenuOpen(null);
   };
 
-  const kindIcons: Record<string, any> = {
-    one_on_one: LayoutGrid,
-    group: Users,
-    round_robin: RefreshCw,
-    collective: UserCheck,
+  const copyLink = (slug: string, id: string) => {
+    navigator.clipboard.writeText(`${window.location.origin}/${user?.slug}/${slug}`);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const copyLink = (slug: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/${user?.slug}/${slug}`);
-  };
+  const filteredEventTypes = eventTypes.filter(et =>
+    et.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const tabs = [
+    { id: 'event_types', label: 'Event types' },
+    { id: 'single_use', label: 'Single-use links' },
+    { id: 'polls', label: 'Meeting polls' },
+  ];
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>;
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Event Types</h1>
-          <p className="text-gray-500 mt-1">Create and manage your scheduling event types</p>
+    <div className="space-y-0 animate-fade-in">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900">Scheduling</h1>
+          <HelpCircle className="w-4 h-4 text-gray-400 cursor-help" />
         </div>
-        <Button onClick={() => { resetForm(); setShowCreate(true); }}>
-          <Plus className="w-4 h-4" /> New Event Type
+        <Button onClick={() => { resetForm(); setShowCreate(true); }} className="gap-2">
+          <Plus className="w-4 h-4" /> Create
+          <ChevronDown className="w-3 h-3 ml-1" />
         </Button>
       </div>
 
-      {eventTypes.length === 0 ? (
-        <EmptyState
-          icon={<LayoutGrid className="w-12 h-12" />}
-          title="No event types yet"
-          description="Create your first event type to start accepting bookings from prospects and leads."
-          action={{ label: 'Create Event Type', onClick: () => { resetForm(); setShowCreate(true); } }}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {eventTypes.map(et => {
-            const KindIcon = kindIcons[et.eventTypeKind] || LayoutGrid;
-            return (
-              <Card key={et.id} padding={false} className={`overflow-hidden ${!et.isActive ? 'opacity-60' : ''}`}>
-                <div className="h-1.5" style={{ backgroundColor: et.color }} />
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <KindIcon className="w-4 h-4 text-gray-400" />
-                      <Badge variant={et.isActive ? 'success' : 'default'}>
-                        {et.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <div className="flex gap-6">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-[#0069ff] text-[#0069ff]'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === 'event_types' && (
+        <>
+          {/* Search */}
+          <div className="relative mb-6 max-w-lg">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search event types"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0069ff]/20 focus:border-[#0069ff] bg-white"
+            />
+          </div>
+
+          {/* User section */}
+          <div className="flex items-center justify-between py-3 mb-1">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#0069ff] flex items-center justify-center text-white text-sm font-bold">
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
+              <span className="text-sm font-semibold text-gray-900">{user?.name || 'User'}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <a
+                href={`/${user?.slug}`}
+                target="_blank"
+                className="flex items-center gap-1.5 text-sm text-[#0069ff] hover:underline"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                View landing page
+              </a>
+              <button className="p-1 hover:bg-gray-100 rounded">
+                <MoreVertical className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          {/* Event type list */}
+          {filteredEventTypes.length === 0 && eventTypes.length === 0 ? (
+            <EmptyState
+              icon={<LayoutGrid className="w-12 h-12" />}
+              title="No event types yet"
+              description="Create your first event type to start accepting bookings from prospects and leads."
+              action={{ label: 'Create Event Type', onClick: () => { resetForm(); setShowCreate(true); } }}
+            />
+          ) : filteredEventTypes.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 text-sm">No event types match your search.</div>
+          ) : (
+            <div className="space-y-0">
+              {filteredEventTypes.map(et => (
+                <div
+                  key={et.id}
+                  className={`group relative flex items-center bg-white border border-gray-200 border-b-0 last:border-b first:rounded-t-lg last:rounded-b-lg hover:z-10 hover:border-gray-300 hover:shadow-sm transition-all ${!et.isActive ? 'opacity-60' : ''}`}
+                >
+                  {/* Color bar */}
+                  <div className="w-1.5 self-stretch rounded-l-lg flex-shrink-0" style={{ backgroundColor: et.color }} />
+
+                  {/* Checkbox area */}
+                  <div className="px-4 py-4 flex-shrink-0">
+                    <input type="checkbox" className="rounded border-gray-300 text-[#0069ff] focus:ring-[#0069ff]" />
+                  </div>
+
+                  {/* Event info */}
+                  <div className="flex-1 py-4 pr-4 min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-0.5">{et.title}</h3>
+                    <p className="text-xs text-gray-500">
+                      {et.duration} min{' '}
+                      <span className="text-gray-300 mx-1">•</span>
+                      {LOCATION_LABELS[et.locationType] || et.locationType}
+                      <span className="text-gray-300 mx-1">•</span>
+                      {KIND_LABELS[et.eventTypeKind] || et.eventTypeKind}
+                    </p>
+                    {et.scheduleInfo && (
+                      <p className="text-xs text-gray-400 mt-0.5">{et.scheduleInfo}</p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 pr-4 flex-shrink-0">
+                    <button
+                      onClick={() => copyLink(et.slug, et.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-full hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                      {copiedId === et.id ? 'Copied!' : 'Copy link'}
+                    </button>
+
                     <div className="relative">
-                      <button onClick={() => setMenuOpen(menuOpen === et.id ? null : et.id)} className="p-1 hover:bg-gray-100 rounded">
+                      <button
+                        onClick={() => setMenuOpen(menuOpen === et.id ? null : et.id)}
+                        className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                      >
                         <MoreVertical className="w-4 h-4 text-gray-400" />
                       </button>
                       {menuOpen === et.id && (
-                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 animate-fade-in">
+                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 animate-fade-in">
                           <button onClick={() => startEdit(et)} className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <Pencil className="w-4 h-4" /> Edit
                           </button>
                           <button onClick={() => { handleDuplicate(et.id); setMenuOpen(null); }} className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <Copy className="w-4 h-4" /> Duplicate
                           </button>
+                          <a href={`/${user?.slug}/${et.slug}`} target="_blank" className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <ExternalLink className="w-4 h-4" /> Preview
+                          </a>
                           <button onClick={() => { handleToggle(et.id, et.isActive); setMenuOpen(null); }} className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             {et.isActive ? <ToggleLeft className="w-4 h-4" /> : <ToggleRight className="w-4 h-4" />}
                             {et.isActive ? 'Deactivate' : 'Activate'}
                           </button>
+                          <div className="border-t border-gray-100 my-1" />
                           <button onClick={() => { handleDelete(et.id); setMenuOpen(null); }} className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50">
                             <Archive className="w-4 h-4" /> Archive
                           </button>
@@ -204,27 +321,30 @@ export default function EventTypesPage() {
                       )}
                     </div>
                   </div>
-
-                  <h3 className="font-semibold text-gray-900 mb-1">{et.title}</h3>
-                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">{et.description || 'No description'}</p>
-
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                    <span>{et.duration} min</span>
-                    <span>{et.locationType.replace(/_/g, ' ')}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                    <button onClick={() => copyLink(et.slug)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                      <Copy className="w-3.5 h-3.5" /> Copy Link
-                    </button>
-                    <a href={`/${user?.slug}/${et.slug}`} target="_blank" className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                      <ExternalLink className="w-3.5 h-3.5" /> Preview
-                    </a>
-                  </div>
                 </div>
-              </Card>
-            );
-          })}
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === 'single_use' && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto mb-4 bg-blue-50 rounded-full flex items-center justify-center">
+            <Link2 className="w-8 h-8 text-[#0069ff]" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Single-use links</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto">Create one-time booking links that expire after use. Perfect for high-touch prospect outreach.</p>
+        </div>
+      )}
+
+      {activeTab === 'polls' && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto mb-4 bg-blue-50 rounded-full flex items-center justify-center">
+            <Users className="w-8 h-8 text-[#0069ff]" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Meeting polls</h3>
+          <p className="text-sm text-gray-500 max-w-md mx-auto">Let participants vote on the best time to meet. Great for group meetings and team scheduling.</p>
         </div>
       )}
 

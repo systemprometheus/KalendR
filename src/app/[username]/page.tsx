@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, use } from 'react';
-import { Calendar, Clock, Video, Phone, MapPin, User } from 'lucide-react';
+import { Clock, User, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface PageProps {
@@ -29,27 +29,21 @@ export default function UserProfilePage({ params }: PageProps) {
       .catch(() => { setError('Failed to load'); setLoading(false); });
   }, [username]);
 
-  const locationLabel = (type: string) => {
-    switch (type) {
-      case 'google_meet': return 'Google Meet';
-      case 'zoom': return 'Zoom';
-      case 'phone': return 'Phone';
-      case 'in_person': return 'In Person';
-      default: return 'Video';
-    }
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" />
+      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
+        <div className="flex gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-gray-600 animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-2.5 h-2.5 rounded-full bg-gray-600 animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2.5 h-2.5 rounded-full bg-gray-600 animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
       </div>
     );
   }
 
   if (error || !user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
         <div className="text-center">
           <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Page Not Found</h2>
@@ -60,42 +54,57 @@ export default function UserProfilePage({ params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="max-w-lg w-full">
-        {/* Profile header */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-full bg-[#0069ff] flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">
-            {user.name?.charAt(0)?.toUpperCase()}
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
-          {user.bio && <p className="text-gray-500 mt-1">{user.bio}</p>}
-          {user.welcomeMessage && <p className="text-sm text-gray-400 mt-2">{user.welcomeMessage}</p>}
+    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center p-4">
+      <div className="relative bg-white rounded-lg shadow-sm border border-gray-200 w-full max-w-2xl overflow-hidden">
+        {/* Powered by ribbon */}
+        <div className="absolute top-0 right-0 overflow-hidden w-28 h-28 z-10">
+          <a
+            href="/"
+            className="absolute top-[22px] right-[-32px] w-[170px] text-center py-1.5 bg-gray-600 text-white text-[10px] font-semibold tracking-wide uppercase rotate-45 shadow-sm hover:bg-gray-700 transition-colors"
+          >
+            Powered by kalendr.io
+          </a>
         </div>
 
-        {/* Event types */}
-        <div className="space-y-3">
+        {/* Profile header */}
+        <div className="text-center pt-10 pb-4 px-8">
+          <h1 className="text-lg font-bold text-gray-900">{user.name}</h1>
+          <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto leading-relaxed">
+            {user.welcomeMessage || 'Welcome to my scheduling page. Please follow the instructions to add an event to my calendar.'}
+          </p>
+        </div>
+
+        {/* Divider */}
+        <div className="mx-8 border-t border-gray-200" />
+
+        {/* Event types list */}
+        <div className="py-4 px-8">
           {eventTypes.map(et => (
             <Link
               key={et.id}
               href={`/${username}/${et.slug}`}
-              className="block bg-white rounded-xl border border-gray-200 p-5 hover:border-[#0069ff] hover:shadow-sm transition-all group"
+              className="flex items-center gap-4 py-4 group hover:bg-gray-50 -mx-4 px-4 rounded-lg transition-colors"
             >
-              <div className="flex items-start gap-4">
-                <div className="w-1.5 h-12 rounded-full" style={{ backgroundColor: et.color }} />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 group-hover:text-[#0069ff] transition-colors">{et.title}</h3>
-                  {et.description && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{et.description}</p>}
-                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {et.duration} min</span>
-                    <span>{locationLabel(et.locationType)}</span>
-                  </div>
-                </div>
-              </div>
+              <div
+                className="w-4 h-4 rounded-full flex-shrink-0"
+                style={{ backgroundColor: et.color }}
+              />
+              <span className="flex-1 text-sm font-semibold text-[#0069ff] group-hover:underline">
+                {et.title}
+              </span>
+              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
             </Link>
           ))}
+
+          {eventTypes.length === 0 && (
+            <p className="text-center text-sm text-gray-500 py-8">No event types available.</p>
+          )}
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-8">Powered by KalendR</p>
+        {/* Cookie settings link */}
+        <div className="px-8 pb-6">
+          <a href="#" className="text-xs text-[#0069ff] hover:underline">Cookie settings</a>
+        </div>
       </div>
     </div>
   );

@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, Globe, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Logo from '@/components/ui/logo';
+import { TIMEZONES, findMatchingTimezone, formatTimezoneLabel } from '@/lib/timezones';
 import { Input } from '@/components/ui/input';
 
 interface SelectOption {
@@ -36,22 +38,7 @@ function Select({ label, value, onChange, options }: SelectProps) {
   );
 }
 
-const TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern Time (ET)' },
-  { value: 'America/Chicago', label: 'Central Time (CT)' },
-  { value: 'America/Denver', label: 'Mountain Time (MT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
-  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HT)' },
-  { value: 'Europe/London', label: 'London (GMT/BST)' },
-  { value: 'Europe/Paris', label: 'Paris (CET)' },
-  { value: 'Europe/Berlin', label: 'Berlin (CET)' },
-  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-  { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
-  { value: 'Asia/Kolkata', label: 'Mumbai (IST)' },
-  { value: 'Australia/Sydney', label: 'Sydney (AEST)' },
-  { value: 'UTC', label: 'UTC' },
-];
+// Timezones imported from @/lib/timezones
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -74,7 +61,7 @@ export default function OnboardingPage() {
           // Try to detect timezone
           try {
             const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            if (tz) setTimezone(tz);
+            if (tz) setTimezone(findMatchingTimezone(tz));
           } catch {}
         } else {
           router.push('/login');
@@ -114,11 +101,8 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-lg">
         {/* Logo */}
-        <div className="flex items-center gap-2 justify-center mb-8">
-          <div className="w-10 h-10 bg-[#0069ff] rounded-xl flex items-center justify-center">
-            <Calendar className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-2xl font-bold text-gray-900">KalendR</span>
+        <div className="flex justify-center mb-8">
+          <Logo size="lg" />
         </div>
 
         {/* Progress steps */}
@@ -149,7 +133,7 @@ export default function OnboardingPage() {
                 label="Timezone"
                 value={timezone}
                 onChange={e => setTimezone(e.target.value)}
-                options={TIMEZONES}
+                options={TIMEZONES.map(tz => ({ value: tz.value, label: formatTimezoneLabel(tz) }))}
               />
 
               <div className="mt-8 flex justify-end">

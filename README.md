@@ -1,4 +1,4 @@
-# KalendR - Scheduling Platform for Inbound Sales Teams
+# kalendr.io - Scheduling Platform for Inbound Sales Teams
 
 A production-ready Calendly-style scheduling application positioned for B2B inbound sales teams. Book more qualified demos, route leads to the right rep, and eliminate scheduling friction.
 

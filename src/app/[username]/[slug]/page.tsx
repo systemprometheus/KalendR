@@ -2,6 +2,7 @@
 import { useState, useEffect, use } from 'react';
 import { Calendar, Clock, Globe, Video, Phone, MapPin, ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, startOfWeek, endOfWeek, addMinutes } from 'date-fns';
+import { TIMEZONES, findMatchingTimezone, formatTimezoneLabel } from '@/lib/timezones';
 
 interface PageProps {
   params: Promise<{ username: string; slug: string }>;
@@ -40,7 +41,7 @@ export default function BookingPage({ params }: PageProps) {
   useEffect(() => {
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (tz) setTimezone(tz);
+      if (tz) setTimezone(findMatchingTimezone(tz));
     } catch {}
   }, []);
 
@@ -245,7 +246,7 @@ export default function BookingPage({ params }: PageProps) {
               <p className="flex items-center gap-2"><Globe className="w-4 h-4 text-gray-400" /> {timezone}</p>
             </div>
           </div>
-          <p className="text-xs text-gray-400">Powered by KalendR</p>
+          <p className="text-xs text-gray-400">Powered by kalendr.io</p>
         </div>
       </div>
     );
@@ -306,14 +307,9 @@ export default function BookingPage({ params }: PageProps) {
                   onChange={e => setTimezone(e.target.value)}
                   className="text-sm text-gray-600 bg-transparent border-none p-0 focus:ring-0 cursor-pointer hover:text-gray-900"
                 >
-                  <option value="America/New_York">Eastern Time</option>
-                  <option value="America/Chicago">Central Time</option>
-                  <option value="America/Denver">Mountain Time</option>
-                  <option value="America/Los_Angeles">Pacific Time</option>
-                  <option value="Europe/London">London (GMT)</option>
-                  <option value="Europe/Paris">Paris (CET)</option>
-                  <option value="Asia/Tokyo">Tokyo (JST)</option>
-                  <option value="UTC">UTC</option>
+                  {TIMEZONES.map(tz => (
+                    <option key={tz.value} value={tz.value}>{tz.label} ({tz.offset})</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -457,7 +453,7 @@ export default function BookingPage({ params }: PageProps) {
                   </button>
                 </form>
 
-                <p className="text-xs text-center text-gray-400 mt-4">Powered by KalendR</p>
+                <p className="text-xs text-center text-gray-400 mt-4">Powered by kalendr.io</p>
               </div>
             )}
           </div>

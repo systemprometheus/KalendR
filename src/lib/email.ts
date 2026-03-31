@@ -1,5 +1,5 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'KalendR <onboarding@resend.dev>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'kalendr.io <onboarding@resend.dev>';
 
 interface EmailOptions {
   to: string;
@@ -93,7 +93,7 @@ export function bookingConfirmationEmail(data: {
           </div>
         </div>
         <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">
-          Powered by KalendR
+          Powered by kalendr.io
         </div>
       </div>
     `,
@@ -131,7 +131,7 @@ export function hostNotificationEmail(data: {
             <p style="margin: 0; color: #6b7280;"><strong>Where:</strong> ${data.location}</p>
           </div>
         </div>
-        <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">Powered by KalendR</div>
+        <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">Powered by kalendr.io</div>
       </div>
     `,
     text: `New booking: ${data.eventTitle}\n\nInvitee: ${data.inviteeName} (${data.inviteeEmail})\nWhen: ${data.dateTime} (${data.timezone})\nDuration: ${data.duration} minutes\nWhere: ${data.location}`,

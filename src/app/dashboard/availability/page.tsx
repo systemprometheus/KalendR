@@ -7,17 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 
+import { TIMEZONES, formatTimezoneLabel } from '@/lib/timezones';
+
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern Time' },
-  { value: 'America/Chicago', label: 'Central Time' },
-  { value: 'America/Denver', label: 'Mountain Time' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time' },
-  { value: 'Europe/London', label: 'London (GMT)' },
-  { value: 'Europe/Paris', label: 'Paris (CET)' },
-  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-  { value: 'UTC', label: 'UTC' },
-];
 
 export default function AvailabilityPage() {
   const [schedules, setSchedules] = useState<any[]>([]);
@@ -143,7 +135,7 @@ export default function AvailabilityPage() {
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <Input label="Schedule Name" value={scheduleName} onChange={e => setScheduleName(e.target.value)} />
-                  <Select label="Timezone" value={timezone} onChange={e => setTimezone(e.target.value)} options={TIMEZONES} />
+                  <Select label="Timezone" value={timezone} onChange={e => setTimezone(e.target.value)} options={TIMEZONES.map(tz => ({ value: tz.value, label: formatTimezoneLabel(tz) }))} />
                 </div>
 
                 <div>
