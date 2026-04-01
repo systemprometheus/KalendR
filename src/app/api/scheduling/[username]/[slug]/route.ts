@@ -21,10 +21,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
     }
 
     // Find event type
-    const et = eventTypes().findFirst({ where: { userId: user.id, slug, isActive: true, isArchived: false } });
-    if (!et) {
+    const foundEventType = eventTypes().findFirst({ where: { userId: user.id, slug, isActive: true, isArchived: false } });
+    if (!foundEventType) {
       return NextResponse.json({ error: 'Event type not found' }, { status: 404 });
     }
+
+    // Availability is configured globally today, so keep public booking pages aligned with
+    // the user's active default schedule instead of a stale event-level schedule reference.
+    const defaultSchedule = availabilitySchedules().findFirst({ where: { userId: user.id, isDefault: true } });
+    const et = defaultSchedule && foundEventType.availabilityScheduleId !== defaultSchedule.id
+      ? eventTypes().update(foundEventType.id, { availabilityScheduleId: defaultSchedule.id }) || foundEventType
+      : foundEventType;
 
     // Get custom questions
     let customQuestions = [];
@@ -55,7 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
 
     // If requesting available dates for a month
     if (month !== null && year) {
-      response.availableDates = getAvailableDates(
+      response.availableDates = await getAvailableDates(
         et.id,
         parseInt(month),
         parseInt(year),
