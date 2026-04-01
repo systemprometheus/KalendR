@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { users, eventTypes, availabilitySchedules } from '@/lib/db';
+import { users, eventTypes, availabilitySchedules, availabilityRules } from '@/lib/db';
 import { generateTimeSlots, getAvailableDates } from '@/lib/availability';
 
 export const dynamic = 'force-dynamic';
@@ -26,11 +26,32 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
       return NextResponse.json({ error: 'Event type not found' }, { status: 404 });
     }
 
-    // Availability is configured globally today, so keep public booking pages aligned with
-    // the user's active default schedule instead of a stale event-level schedule reference.
-    const defaultSchedule = availabilitySchedules().findFirst({ where: { userId: user.id, isDefault: true } });
-    const et = defaultSchedule && foundEventType.availabilityScheduleId !== defaultSchedule.id
-      ? eventTypes().update(foundEventType.id, { availabilityScheduleId: defaultSchedule.id }) || foundEventType
+    // Availability is configured globally today. Public booking pages should use the user's
+    // active schedule with real enabled hours instead of a stale event-level schedule link.
+    const schedules = availabilitySchedules().findMany({
+      where: { userId: user.id },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const schedulesWithRules = schedules.map(schedule => ({
+      schedule,
+      enabledRuleCount: availabilityRules().count({
+        scheduleId: schedule.id,
+        isEnabled: true,
+      }),
+    }));
+
+    const assignedSchedule = foundEventType.availabilityScheduleId
+      ? schedulesWithRules.find(({ schedule }) => schedule.id === foundEventType.availabilityScheduleId)
+      : null;
+
+    const preferredSchedule = schedulesWithRules.find(({ schedule, enabledRuleCount }) => schedule.isDefault && enabledRuleCount > 0)
+      || (assignedSchedule && assignedSchedule.enabledRuleCount > 0 ? assignedSchedule : null)
+      || schedulesWithRules.find(({ enabledRuleCount }) => enabledRuleCount > 0)
+      || null;
+
+    const et = preferredSchedule && foundEventType.availabilityScheduleId !== preferredSchedule.schedule.id
+      ? eventTypes().update(foundEventType.id, { availabilityScheduleId: preferredSchedule.schedule.id }) || foundEventType
       : foundEventType;
 
     // Get custom questions
