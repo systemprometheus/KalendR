@@ -26,21 +26,14 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Scaffolding for connect flow - in production this would handle OAuth
+// Connect flow - generates OAuth URLs for calendar providers
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { provider } = await req.json();
-
-    if (!['google', 'microsoft'].includes(provider)) {
-      return NextResponse.json({ error: 'Unsupported provider' }, { status: 400 });
-    }
-
-    // In production, this would redirect to OAuth flow
-    // For now, return the OAuth URL that would be used
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
 
     if (provider === 'google') {
       const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -53,9 +46,16 @@ export async function POST(req: NextRequest) {
       }
 
       const redirectUri = `${baseUrl}/api/integrations/calendars/google/callback`;
-      const oauthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=https://www.googleapis.com/auth/calendar&access_type=offline&prompt=consent`;
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email',
+        access_type: 'offline',
+        prompt: 'consent',
+      });
 
-      return NextResponse.json({ url: oauthUrl });
+      return NextResponse.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
     }
 
     if (provider === 'microsoft') {
@@ -68,11 +68,22 @@ export async function POST(req: NextRequest) {
         }, { status: 501 });
       }
 
+      const tenantId = process.env.MICROSOFT_TENANT_ID || 'common';
       const redirectUri = `${baseUrl}/api/integrations/calendars/microsoft/callback`;
-      const oauthUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=Calendars.ReadWrite`;
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'Calendars.ReadWrite User.Read openid email profile',
+        response_mode: 'query',
+      });
 
-      return NextResponse.json({ url: oauthUrl });
+      return NextResponse.json({
+        url: `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params}`,
+      });
     }
+
+    return NextResponse.json({ error: 'Unsupported provider' }, { status: 400 });
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

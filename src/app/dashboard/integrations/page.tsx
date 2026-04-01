@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Link2, CheckCircle } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Link2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,30 +23,84 @@ const INTEGRATIONS = [
 
 export default function IntegrationsPage() {
   const [connectedCalendars, setConnectedCalendars] = useState<any[]>([]);
+  const [connectedIntegrations, setConnectedIntegrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    fetch('/api/integrations/calendars').then(r => r.json()).then(data => {
-      setConnectedCalendars(data.calendars || []);
+    // Check for success/error in URL params (from OAuth callback redirects)
+    const success = searchParams.get('success');
+    const error = searchParams.get('error');
+    if (success) {
+      setToast({ type: 'success', message: success.replace(/\+/g, ' ') });
+      // Clean URL
+      window.history.replaceState({}, '', '/dashboard/integrations');
+    } else if (error) {
+      setToast({ type: 'error', message: error.replace(/\+/g, ' ') });
+      window.history.replaceState({}, '', '/dashboard/integrations');
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/integrations/calendars').then(r => r.json()),
+      fetch('/api/integrations/status').then(r => r.json()).catch(() => ({ integrations: [] })),
+    ]).then(([calData, intData]) => {
+      setConnectedCalendars(calData.calendars || []);
+      setConnectedIntegrations(intData.integrations || []);
       setLoading(false);
     });
   }, []);
 
   const handleConnect = async (provider: string) => {
-    const res = await fetch('/api/integrations/calendars', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider }),
-    });
-    const data = await res.json();
-    if (data.url) {
-      window.open(data.url, '_blank');
-    } else if (data.stubbed) {
-      alert(`${provider} integration requires OAuth credentials. Set the environment variables and try again.`);
+    setConnecting(provider);
+    try {
+      // Calendar providers use the calendars endpoint, others use the connect endpoint
+      const isCalendar = ['google', 'microsoft'].includes(provider);
+      const endpoint = isCalendar ? '/api/integrations/calendars' : '/api/integrations/connect';
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        // Open OAuth flow in same window for better UX
+        window.location.href = data.url;
+      } else if (data.stubbed) {
+        setToast({
+          type: 'error',
+          message: `${data.error || provider + ' integration not configured'}. Contact the admin to set up credentials.`,
+        });
+      } else if (data.error) {
+        setToast({ type: 'error', message: data.error });
+      }
+    } catch (err) {
+      setToast({ type: 'error', message: 'Failed to start connection. Please try again.' });
+    } finally {
+      setConnecting(null);
     }
   };
 
-  const isConnected = (provider: string) => connectedCalendars.some(c => c.provider === provider);
+  const isConnected = (provider: string) => {
+    // Check calendars for google/microsoft
+    if (connectedCalendars.some(c => c.provider === provider)) return true;
+    // Check general integrations for others
+    if (connectedIntegrations.some((i: any) => i.provider === provider)) return true;
+    return false;
+  };
 
   const categories = [...new Set(INTEGRATIONS.map(i => i.category))];
 
@@ -55,6 +110,23 @@ export default function IntegrationsPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
+          toast.type === 'success'
+            ? 'bg-green-50 text-green-800 border border-green-200'
+            : 'bg-red-50 text-red-800 border border-red-200'
+        }`}>
+          {toast.type === 'success' ? (
+            <CheckCircle className="w-4 h-4 text-green-500" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-red-500" />
+          )}
+          {toast.message}
+          <button onClick={() => setToast(null)} className="ml-2 text-gray-400 hover:text-gray-600">&times;</button>
+        </div>
+      )}
+
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
         <p className="text-gray-500 mt-1">Connect your tools to streamline scheduling workflows</p>
@@ -84,6 +156,7 @@ export default function IntegrationsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {INTEGRATIONS.filter(i => i.category === category).map(integration => {
               const connected = isConnected(integration.provider);
+              const isLoading = connecting === integration.provider;
               const IconComponent = integration.Icon;
               return (
                 <Card key={integration.id} className="hover:border-gray-300 transition-colors">
@@ -102,8 +175,14 @@ export default function IntegrationsPage() {
                       variant={connected ? 'outline' : 'primary'}
                       size="sm"
                       onClick={() => handleConnect(integration.provider)}
+                      disabled={isLoading}
                     >
-                      {connected ? 'Manage' : 'Connect'}
+                      {isLoading ? (
+                        <span className="flex items-center gap-1">
+                          <span className="animate-spin-slow w-3 h-3 border border-current border-t-transparent rounded-full" />
+                          Connecting...
+                        </span>
+                      ) : connected ? 'Manage' : 'Connect'}
                     </Button>
                   </div>
                 </Card>
