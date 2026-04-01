@@ -1,7 +1,7 @@
-import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts, connectedCalendars, users } from './db';
-import { addMinutes, startOfDay, endOfDay, format, parse, isAfter, isBefore, addDays, eachDayOfInterval, setHours, setMinutes } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts, users } from './db';
+import { addMinutes, startOfDay, addDays } from 'date-fns';
 import { ensureDefaultAvailabilitySchedule } from './default-availability';
+import { BusyInterval, getGoogleCalendarBusyIntervals, hasBusyIntervalConflict, hasGoogleCalendarConflict } from './google-calendar';
 
 export interface TimeSlot {
   start: Date;
@@ -13,14 +13,48 @@ export interface AvailableSlot {
   endTime: string; // ISO string
 }
 
+function filterBusyIntervalsForDate(busyIntervals: BusyInterval[], dateStr: string) {
+  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
+  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+
+  return busyIntervals.filter((interval) => {
+    const busyStart = new Date(interval.start);
+    const busyEnd = new Date(interval.end);
+    return busyStart < dayEnd && busyEnd > dayStart;
+  });
+}
+
 function resolveScheduleForEventType(et: any) {
-  if (et.availabilityScheduleId) {
-    const assignedSchedule = availabilitySchedules().findById(et.availabilityScheduleId);
-    if (assignedSchedule) return assignedSchedule;
+  const defaultSchedule = availabilitySchedules().findFirst({
+    where: { userId: et.userId, isDefault: true },
+  });
+
+  if (defaultSchedule) {
+    const enabledRuleCount = availabilityRules().count({
+      scheduleId: defaultSchedule.id,
+      isEnabled: true,
+    });
+
+    if (enabledRuleCount > 0) {
+      return defaultSchedule;
+    }
   }
 
-  const existingSchedule = availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } })
-    || availabilitySchedules().findFirst({ where: { userId: et.userId } });
+  if (et.availabilityScheduleId) {
+    const assignedSchedule = availabilitySchedules().findById(et.availabilityScheduleId);
+    if (assignedSchedule) {
+      const enabledRuleCount = availabilityRules().count({
+        scheduleId: assignedSchedule.id,
+        isEnabled: true,
+      });
+
+      if (enabledRuleCount > 0) {
+        return assignedSchedule;
+      }
+    }
+  }
+
+  const existingSchedule = availabilitySchedules().findFirst({ where: { userId: et.userId } });
 
   if (existingSchedule) return existingSchedule;
 
@@ -56,11 +90,12 @@ export function getAvailabilityForDate(
   return rules.map(r => ({ startTime: r.startTime, endTime: r.endTime }));
 }
 
-export function generateTimeSlots(
+export async function generateTimeSlots(
   eventTypeId: string,
   dateStr: string, // YYYY-MM-DD
   inviteeTimezone: string,
-): AvailableSlot[] {
+  preloadedBusyIntervals?: BusyInterval[],
+): Promise<AvailableSlot[]> {
   const et = eventTypes().findById(eventTypeId);
   if (!et || !et.isActive) return [];
 
@@ -89,6 +124,10 @@ export function generateTimeSlots(
     const bookingDate = b.startTime.substring(0, 10);
     return bookingDate === dateStr;
   });
+
+  const googleBusyIntervals = preloadedBusyIntervals
+    ? filterBusyIntervalsForDate(preloadedBusyIntervals, dateStr)
+    : await getGoogleCalendarBusyIntervals(et.userId, dayStart, dayEnd);
 
   // Check daily limit
   if (et.dailyLimit) {
@@ -133,13 +172,19 @@ export function generateTimeSlots(
       const slotWithBufferStart = addMinutes(slotStart, -bufferBefore);
       const slotWithBufferEnd = addMinutes(slotEnd, bufferAfter);
 
-      const hasConflict = existingBookings.some(booking => {
+      const hasInternalConflict = existingBookings.some(booking => {
         const bStart = new Date(booking.startTime);
         const bEnd = new Date(booking.endTime);
         return slotWithBufferStart < bEnd && slotWithBufferEnd > bStart;
       });
 
-      if (!hasConflict) {
+      const hasGoogleConflict = hasBusyIntervalConflict(
+        googleBusyIntervals,
+        slotWithBufferStart,
+        slotWithBufferEnd,
+      );
+
+      if (!hasInternalConflict && !hasGoogleConflict) {
         slots.push({
           time: slotStart.toISOString(),
           endTime: slotEnd.toISOString(),
@@ -153,12 +198,12 @@ export function generateTimeSlots(
   return slots;
 }
 
-export function getAvailableDates(
+export async function getAvailableDates(
   eventTypeId: string,
   month: number, // 0-indexed
   year: number,
   timezone: string,
-): string[] {
+): Promise<string[]> {
   const et = eventTypes().findById(eventTypeId);
   if (!et) return [];
 
@@ -169,8 +214,10 @@ export function getAvailableDates(
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const availableDates: string[] = [];
   const now = new Date();
-  const minNotice = et.minNotice || 0;
   const maxFutureDays = et.maxFutureDays || 60;
+  const monthStart = `${year}-${String(month + 1).padStart(2, '0')}-01T00:00:00.000Z`;
+  const monthEnd = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}T23:59:59.999Z`;
+  const monthlyBusyIntervals = await getGoogleCalendarBusyIntervals(et.userId, monthStart, monthEnd);
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -184,7 +231,10 @@ export function getAvailableDates(
 
     // Check if there's any availability on this day
     const windows = getAvailabilityForDate(schedule.id, dateStr);
-    if (windows.length > 0) {
+    if (windows.length === 0) continue;
+
+    const slots = await generateTimeSlots(et.id, dateStr, timezone, monthlyBusyIntervals);
+    if (slots.length > 0) {
       availableDates.push(dateStr);
     }
   }
@@ -228,11 +278,11 @@ export function selectRoundRobinHost(eventTypeId: string): string | null {
 }
 
 // Check if all required hosts are available (collective events)
-export function checkCollectiveAvailability(
+export async function checkCollectiveAvailability(
   eventTypeId: string,
   startTime: Date,
   endTime: Date,
-): boolean {
+): Promise<boolean> {
   const hosts = eventTypeHosts().findMany({
     where: { eventTypeId, isRequired: true },
   });
@@ -247,6 +297,7 @@ export function checkCollectiveAvailability(
     });
 
     if (conflicts.length > 0) return false;
+    if (await hasGoogleCalendarConflict(host.userId, startTime, endTime)) return false;
   }
 
   return true;

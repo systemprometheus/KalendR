@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
-
-const integrations = () => db.collection<any>('integrations');
+import {
+  fetchSlackChannels,
+  getAppUrl,
+  isValidIntegrationState,
+  upsertIntegration,
+} from '@/lib/integrations';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const error = req.nextUrl.searchParams.get('error');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
+  const state = req.nextUrl.searchParams.get('state');
+  const appUrl = getAppUrl(req);
 
   if (error || !code) {
     return NextResponse.redirect(
@@ -16,6 +20,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.redirect(new URL('/login?error=Session+expired', appUrl));
+    }
+
+    if (!isValidIntegrationState(state, 'slack', user.id)) {
+      return NextResponse.redirect(
+        new URL('/dashboard/integrations?error=Slack+connection+could+not+be+verified', appUrl)
+      );
+    }
+
     const tokenRes = await fetch('https://slack.com/api/oauth.v2.access', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -28,36 +43,36 @@ export async function GET(req: NextRequest) {
     });
 
     const tokens = await tokenRes.json();
-    if (!tokens.ok || !tokens.access_token) {
+    if (!tokenRes.ok || !tokens.ok || !tokens.access_token) {
       console.error('Slack token exchange failed:', tokens);
       return NextResponse.redirect(
         new URL('/dashboard/integrations?error=Slack+connection+failed', appUrl)
       );
     }
 
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.redirect(new URL('/login?error=Session+expired', appUrl));
-    }
+    const channels = await fetchSlackChannels(tokens.access_token).catch(() => []);
+    const defaultChannel =
+      channels.find((channel) => channel.name === 'general') ||
+      channels[0] ||
+      null;
 
-    const existing = integrations().findFirst({
-      where: { userId: user.id, provider: 'slack' },
-    });
-
-    const data = {
+    upsertIntegration(user.id, 'slack', {
       accessToken: tokens.access_token,
       refreshToken: '',
       tokenExpiry: '',
       email: '',
+      displayName: tokens.team?.name || '',
       externalId: tokens.team?.id || '',
       teamName: tokens.team?.name || '',
-    };
-
-    if (existing) {
-      integrations().update(existing.id, data);
-    } else {
-      integrations().create({ userId: user.id, provider: 'slack', ...data });
-    }
+      scope: tokens.scope || '',
+      settings: {
+        defaultChannelId: defaultChannel?.id || '',
+        defaultChannelName: defaultChannel?.name || '',
+      },
+      metadata: {
+        appId: tokens.app_id || '',
+      },
+    });
 
     return NextResponse.redirect(
       new URL('/dashboard/integrations?success=Slack+connected', appUrl)

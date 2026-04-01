@@ -2,7 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { bookings, eventTypes, users } from '@/lib/db';
 import { sendEmail, cancellationEmail } from '@/lib/email';
+import { deleteGoogleCalendarEventForBooking } from '@/lib/google-calendar';
+import { syncConnectedIntegrations } from '@/lib/integrations';
+import { deleteZoomMeeting } from '@/lib/zoom';
 import { format } from 'date-fns';
+
+function parseBookingMetadata(metadata?: string | null) {
+  if (!metadata) return null;
+
+  try {
+    return JSON.parse(metadata);
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
   try {
@@ -48,6 +61,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
+      const bookingMetadata = parseBookingMetadata(booking.metadata);
+      if (booking.locationType === 'zoom' && bookingMetadata?.zoomMeetingId) {
+        await deleteZoomMeeting({
+          userId: booking.hostId,
+          meetingId: String(bookingMetadata.zoomMeetingId),
+        });
+      }
+      if (booking.calendarEventId || bookingMetadata?.googleCalendar?.eventId) {
+        await deleteGoogleCalendarEventForBooking({
+          userId: booking.hostId,
+          eventId: bookingMetadata?.googleCalendar?.eventId || booking.calendarEventId,
+          connectedCalendarId: bookingMetadata?.googleCalendar?.connectedCalendarId,
+          calendarId: bookingMetadata?.googleCalendar?.calendarId,
+        });
+      }
+
       bookings().update(booking.id, {
         status: 'cancelled',
         cancelReason: reason || null,
@@ -69,7 +98,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
           reason,
         });
         toInvitee.to = booking.inviteeEmail;
-        sendEmail(toInvitee);
+        const inviteeEmailPromise = sendEmail(toInvitee);
 
         const toHost = cancellationEmail({
           recipientName: host.name,
@@ -79,7 +108,23 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
           reason,
         });
         toHost.to = host.email;
-        sendEmail(toHost);
+        const hostEmailPromise = sendEmail(toHost);
+
+        await Promise.allSettled([
+          inviteeEmailPromise,
+          hostEmailPromise,
+          syncConnectedIntegrations({
+            userId: host.id,
+            booking: {
+              ...booking,
+              status: 'cancelled',
+              cancelReason: reason || null,
+            } as any,
+            eventType: et as any,
+            host: host as any,
+            action: 'cancelled',
+          }),
+        ]);
       }
 
       return NextResponse.json({ success: true, status: 'cancelled' });
@@ -96,6 +141,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
 
       if (!newStartTime) {
         return NextResponse.json({ error: 'New start time is required' }, { status: 400 });
+      }
+
+      const bookingMetadata = parseBookingMetadata(booking.metadata);
+      if (booking.locationType === 'zoom' && bookingMetadata?.zoomMeetingId) {
+        await deleteZoomMeeting({
+          userId: booking.hostId,
+          meetingId: String(bookingMetadata.zoomMeetingId),
+        });
+      }
+      if (booking.calendarEventId || bookingMetadata?.googleCalendar?.eventId) {
+        await deleteGoogleCalendarEventForBooking({
+          userId: booking.hostId,
+          eventId: bookingMetadata?.googleCalendar?.eventId || booking.calendarEventId,
+          connectedCalendarId: bookingMetadata?.googleCalendar?.connectedCalendarId,
+          calendarId: bookingMetadata?.googleCalendar?.calendarId,
+        });
       }
 
       // Mark old booking as rescheduled

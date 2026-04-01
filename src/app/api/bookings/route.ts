@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { bookings, eventTypes, users } from '@/lib/db';
-import { generateTimeSlots, selectRoundRobinHost, checkCollectiveAvailability } from '@/lib/availability';
+import { selectRoundRobinHost, checkCollectiveAvailability } from '@/lib/availability';
 import { sendEmail, bookingConfirmationEmail, hostNotificationEmail } from '@/lib/email';
+import { createGoogleCalendarEventForBooking, hasGoogleCalendarConflict } from '@/lib/google-calendar';
+import { syncConnectedIntegrations } from '@/lib/integrations';
+import { createZoomMeeting } from '@/lib/zoom';
 import { addMinutes, format } from 'date-fns';
+
+function parseBookingMetadata(metadata?: string | null) {
+  if (!metadata) return {};
+
+  try {
+    return JSON.parse(metadata);
+  } catch {
+    return {};
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -64,7 +77,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (et.eventTypeKind === 'collective') {
-      const available = checkCollectiveAvailability(et.id, start, end);
+      const available = await checkCollectiveAvailability(et.id, start, end);
       if (!available) {
         return NextResponse.json({ error: 'Not all required hosts are available at this time' }, { status: 409 });
       }
@@ -83,6 +96,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'This time slot is no longer available' }, { status: 409 });
     }
 
+    if (await hasGoogleCalendarConflict(hostId, start, end)) {
+      return NextResponse.json({ error: 'This time slot conflicts with the host calendar' }, { status: 409 });
+    }
+
     // Check daily limit
     if (et.dailyLimit) {
       const dateStr = start.toISOString().substring(0, 10);
@@ -96,16 +113,39 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine location
+    const bookingStatus = et.requiresConfirmation ? 'pending' : 'confirmed';
     let locationType = et.locationType;
     let locationValue = et.locationValue;
     let meetingUrl = null;
+    let metadata = null;
 
     if (locationType === 'google_meet') {
       // TODO: Create real Google Meet link via Calendar API when Google integration is connected
       locationValue = 'Google Meet link will be provided in calendar invite';
     } else if (locationType === 'zoom') {
-      // TODO: Create real Zoom meeting via Zoom API when Zoom integration is connected
-      locationValue = 'Zoom link will be provided in calendar invite';
+      if (bookingStatus === 'confirmed') {
+        const zoomMeeting = await createZoomMeeting({
+          userId: hostId,
+          startTime: start,
+          durationMinutes: et.duration,
+          timezone: timezone || 'America/New_York',
+          topic: et.title,
+          agenda: `Booked by ${inviteeName} (${inviteeEmail})`,
+        });
+
+        if (zoomMeeting) {
+          meetingUrl = zoomMeeting.joinUrl;
+          locationValue = zoomMeeting.joinUrl;
+          metadata = JSON.stringify({
+            zoomMeetingId: zoomMeeting.meetingId,
+            zoomStartUrl: zoomMeeting.startUrl || null,
+          });
+        } else {
+          locationValue = 'Zoom link will be provided separately';
+        }
+      } else {
+        locationValue = 'Zoom link will be generated once the booking is confirmed';
+      }
     }
 
     const booking = bookings().create({
@@ -115,7 +155,7 @@ export async function POST(req: NextRequest) {
       startTime: start.toISOString(),
       endTime: end.toISOString(),
       timezone: timezone || 'America/New_York',
-      status: et.requiresConfirmation ? 'pending' : 'confirmed',
+      status: bookingStatus,
       inviteeName,
       inviteeEmail,
       inviteePhone: inviteePhone || null,
@@ -126,13 +166,43 @@ export async function POST(req: NextRequest) {
       locationType,
       locationValue,
       meetingUrl,
+      metadata,
       source: source || 'booking_page',
       cancelToken: Math.random().toString(36).substring(2) + Date.now().toString(36),
       rescheduleToken: Math.random().toString(36).substring(2) + Date.now().toString(36),
     });
 
-    // Send emails
     const host = users().findById(hostId);
+    let bookingRecord = booking;
+
+    if (host && booking.status === 'confirmed') {
+      const googleEvent = await createGoogleCalendarEventForBooking({
+        booking: booking as any,
+        eventType: et as any,
+        host: host as any,
+      });
+
+      if (googleEvent) {
+        bookingRecord = bookings().update(booking.id, {
+          calendarEventId: googleEvent.eventId,
+          meetingUrl: googleEvent.meetingUrl || booking.meetingUrl,
+          locationValue: booking.locationType === 'google_meet'
+            ? (googleEvent.meetingUrl || booking.locationValue)
+            : booking.locationValue,
+          metadata: JSON.stringify({
+            ...parseBookingMetadata(booking.metadata),
+            googleCalendar: {
+              connectedCalendarId: googleEvent.connectedCalendarId,
+              calendarId: googleEvent.calendarId,
+              eventId: googleEvent.eventId,
+              htmlLink: googleEvent.htmlLink || '',
+            },
+          }),
+        }) || booking;
+      }
+    }
+
+    // Send emails
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const dateTimeStr = format(start, 'EEEE, MMMM d, yyyy h:mm a');
 
@@ -145,12 +215,12 @@ export async function POST(req: NextRequest) {
         dateTime: dateTimeStr,
         timezone: timezone || 'America/New_York',
         duration: et.duration,
-        location: locationValue || locationType,
-        cancelUrl: `${appUrl}/booking/${booking.uid}/cancel?token=${booking.cancelToken}`,
-        rescheduleUrl: `${appUrl}/booking/${booking.uid}/reschedule?token=${booking.rescheduleToken}`,
+        location: bookingRecord.locationValue || bookingRecord.meetingUrl || locationType,
+        cancelUrl: `${appUrl}/booking/${bookingRecord.uid}/cancel?token=${bookingRecord.cancelToken}`,
+        rescheduleUrl: `${appUrl}/booking/${bookingRecord.uid}/reschedule?token=${bookingRecord.rescheduleToken}`,
       });
       confirmEmail.to = inviteeEmail;
-      sendEmail(confirmEmail);
+      const inviteeEmailPromise = sendEmail(confirmEmail);
 
       // Send notification to host
       const hostEmail = hostNotificationEmail({
@@ -161,21 +231,33 @@ export async function POST(req: NextRequest) {
         dateTime: dateTimeStr,
         timezone: timezone || 'America/New_York',
         duration: et.duration,
-        location: locationValue || locationType,
+        location: bookingRecord.locationValue || bookingRecord.meetingUrl || locationType,
       });
       hostEmail.to = host.email;
-      sendEmail(hostEmail);
+      const hostEmailPromise = sendEmail(hostEmail);
+
+      await Promise.allSettled([
+        inviteeEmailPromise,
+        hostEmailPromise,
+        syncConnectedIntegrations({
+          userId: host.id,
+          booking: bookingRecord as any,
+          eventType: et as any,
+          host: host as any,
+          action: 'created',
+        }),
+      ]);
     }
 
     return NextResponse.json({
       booking: {
-        id: booking.id,
-        uid: booking.uid,
-        startTime: booking.startTime,
-        endTime: booking.endTime,
-        status: booking.status,
-        cancelToken: booking.cancelToken,
-        rescheduleToken: booking.rescheduleToken,
+        id: bookingRecord.id,
+        uid: bookingRecord.uid,
+        startTime: bookingRecord.startTime,
+        endTime: bookingRecord.endTime,
+        status: bookingRecord.status,
+        cancelToken: bookingRecord.cancelToken,
+        rescheduleToken: bookingRecord.rescheduleToken,
       },
     }, { status: 201 });
   } catch (error) {

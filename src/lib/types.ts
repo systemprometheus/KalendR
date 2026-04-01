@@ -181,12 +181,41 @@ export interface ConnectedCalendar {
   provider: string;
   providerAccountId: string;
   email: string;
+  accountEmail?: string;
+  accountExternalId?: string;
+  calendarId?: string;
+  calendarName?: string;
+  accessRole?: string;
   accessToken: string;
   refreshToken?: string;
   tokenExpiry?: string;
   checkForConflicts: boolean;
   addEventsTo: boolean;
   isPrimary: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Integration {
+  id: string;
+  userId: string;
+  provider: string;
+  accessToken: string;
+  refreshToken?: string;
+  tokenExpiry?: string;
+  externalId?: string;
+  email?: string;
+  displayName?: string;
+  teamName?: string;
+  instanceUrl?: string;
+  scope?: string;
+  active?: boolean;
+  disconnectedAt?: string;
+  settings?: Record<string, any>;
+  metadata?: Record<string, any>;
+  lastSyncedAt?: string;
+  lastSyncStatus?: 'success' | 'error';
+  lastSyncError?: string;
   createdAt: string;
   updatedAt: string;
 }

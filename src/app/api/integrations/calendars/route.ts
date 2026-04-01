@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { connectedCalendars } from '@/lib/db';
+import { buildGoogleCalendarOAuthUrl, updateGoogleCalendarSettings } from '@/lib/google-calendar';
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +15,11 @@ export async function GET(req: NextRequest) {
       id: c.id,
       provider: c.provider,
       email: c.email,
+      accountEmail: c.accountEmail || c.email,
+      accountExternalId: c.accountExternalId || '',
+      calendarId: c.calendarId || '',
+      calendarName: c.calendarName || '',
+      accessRole: c.accessRole || '',
       checkForConflicts: c.checkForConflicts,
       addEventsTo: c.addEventsTo,
       isPrimary: c.isPrimary,
@@ -45,17 +51,7 @@ export async function POST(req: NextRequest) {
         }, { status: 501 });
       }
 
-      const redirectUri = `${baseUrl}/api/integrations/calendars/google/callback`;
-      const params = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        response_type: 'code',
-        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email',
-        access_type: 'offline',
-        prompt: 'consent',
-      });
-
-      return NextResponse.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+      return NextResponse.json({ url: buildGoogleCalendarOAuthUrl(baseUrl, clientId) });
     }
 
     if (provider === 'microsoft') {
@@ -86,5 +82,54 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unsupported provider' }, { status: 400 });
   } catch (error) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { id, checkForConflicts, addEventsTo } = await req.json();
+    if (!id) {
+      return NextResponse.json({ error: 'Calendar id is required' }, { status: 400 });
+    }
+
+    const calendar = connectedCalendars().findFirst({ where: { id, userId: user.id } });
+    if (!calendar) {
+      return NextResponse.json({ error: 'Calendar not found' }, { status: 404 });
+    }
+
+    if (calendar.provider !== 'google') {
+      return NextResponse.json({ error: 'Calendar settings are currently supported for Google only' }, { status: 400 });
+    }
+
+    const updated = await updateGoogleCalendarSettings({
+      userId: user.id,
+      calendarId: id,
+      checkForConflicts,
+      addEventsTo,
+    });
+
+    return NextResponse.json({
+      calendar: updated ? {
+        id: updated.id,
+        provider: updated.provider,
+        email: updated.email,
+        accountEmail: (updated as any).accountEmail || updated.email,
+        accountExternalId: (updated as any).accountExternalId || '',
+        calendarId: (updated as any).calendarId || '',
+        calendarName: (updated as any).calendarName || '',
+        accessRole: (updated as any).accessRole || '',
+        checkForConflicts: updated.checkForConflicts,
+        addEventsTo: updated.addEventsTo,
+        isPrimary: updated.isPrimary,
+        createdAt: updated.createdAt,
+      } : null,
+    });
+  } catch (error: any) {
+    const message = error?.message || 'Internal server error';
+    const status = message === 'This calendar is read-only and cannot receive new bookings.' ? 400 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

@@ -137,6 +137,9 @@ ZOOM_CLIENT_SECRET=""
 - Slot interval controls
 - Timezone-aware scheduling
 - Conflict detection (prevents double-booking)
+- Google Calendar conflict sync across selected calendars
+- Google Calendar event creation on the selected add-to calendar
+- Google Meet link generation through Google Calendar
 
 ### Booking Flow
 - Public booking pages (Calendly-style calendar + time slots + form)
@@ -207,8 +210,8 @@ ZOOM_CLIENT_SECRET=""
 
 ## What's Stubbed / Partial
 
-1. **Calendar OAuth** - Architecture ready, needs Google/Microsoft credentials
-2. **Real calendar sync** - Conflict checking uses internal bookings only
+1. **Google Calendar OAuth** - Calendly-style conflict checks and event creation are live, requires Google credentials and consent-screen setup
+2. **Microsoft / calendar write-back** - Microsoft sync is still partial
 3. **Stripe billing** - UI complete, needs Stripe API keys
 4. **Team invitations** - UI built, email sending stubbed
 5. **SMS notifications** - Schema ready, not implemented

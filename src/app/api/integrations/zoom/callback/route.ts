@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { getZoomOAuthConfig } from '@/lib/zoom';
 
 const integrations = () => db.collection<any>('integrations');
 
@@ -16,8 +17,15 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const clientId = process.env.ZOOM_CLIENT_ID!;
-    const clientSecret = process.env.ZOOM_CLIENT_SECRET!;
+    const config = getZoomOAuthConfig();
+    if (!config.configured) {
+      return NextResponse.redirect(
+        new URL(`/dashboard/integrations?error=${encodeURIComponent(`Zoom credentials missing: ${config.missing.join(', ')}`)}`, appUrl)
+      );
+    }
+
+    const clientId = config.clientId;
+    const clientSecret = config.clientSecret;
     const redirectUri = `${appUrl}/api/integrations/zoom/callback`;
 
     // Exchange code for tokens

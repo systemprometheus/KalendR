@@ -1,5 +1,6 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'kalendr.io <onboarding@resend.dev>';
+const KALENDR_EMAIL_CTA_URL = 'https://kalendr.io/?utm_source=transactional_email&utm_medium=powered_by&utm_campaign=free_scheduling_page';
 
 interface EmailOptions {
   to: string;
@@ -7,6 +8,19 @@ interface EmailOptions {
   html: string;
   text?: string;
   replyTo?: string;
+}
+
+function kalendrEmailFooterHtml() {
+  return `
+    <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">
+      Powered by <a href="${KALENDR_EMAIL_CTA_URL}" style="color: #03b2d1; text-decoration: none; font-weight: 600;">Kalendr</a>
+      <div style="margin-top: 6px;">Create your own scheduling page for free.</div>
+    </div>
+  `;
+}
+
+function kalendrEmailFooterText() {
+  return `\n\nPowered by Kalendr\nCreate your own scheduling page for free: ${KALENDR_EMAIL_CTA_URL}`;
 }
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
@@ -92,12 +106,10 @@ export function bookingConfirmationEmail(data: {
             <a href="${data.cancelUrl}" style="display: inline-block; padding: 10px 20px; background: #fee2e2; color: #dc2626; text-decoration: none; border-radius: 6px; font-size: 14px;">Cancel</a>
           </div>
         </div>
-        <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">
-          Powered by kalendr.io
-        </div>
+        ${kalendrEmailFooterHtml()}
       </div>
     `,
-    text: `Meeting Confirmed: ${data.eventTitle} with ${data.hostName}\n\nWhen: ${data.dateTime} (${data.timezone})\nDuration: ${data.duration} minutes\nWhere: ${data.location}\n\nReschedule: ${data.rescheduleUrl}\nCancel: ${data.cancelUrl}`,
+    text: `Meeting Confirmed: ${data.eventTitle} with ${data.hostName}\n\nWhen: ${data.dateTime} (${data.timezone})\nDuration: ${data.duration} minutes\nWhere: ${data.location}\n\nReschedule: ${data.rescheduleUrl}\nCancel: ${data.cancelUrl}${kalendrEmailFooterText()}`,
   };
 }
 
@@ -131,10 +143,10 @@ export function hostNotificationEmail(data: {
             <p style="margin: 0; color: #6b7280;"><strong>Where:</strong> ${data.location}</p>
           </div>
         </div>
-        <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">Powered by kalendr.io</div>
+        ${kalendrEmailFooterHtml()}
       </div>
     `,
-    text: `New booking: ${data.eventTitle}\n\nInvitee: ${data.inviteeName} (${data.inviteeEmail})\nWhen: ${data.dateTime} (${data.timezone})\nDuration: ${data.duration} minutes\nWhere: ${data.location}`,
+    text: `New booking: ${data.eventTitle}\n\nInvitee: ${data.inviteeName} (${data.inviteeEmail})\nWhen: ${data.dateTime} (${data.timezone})\nDuration: ${data.duration} minutes\nWhere: ${data.location}${kalendrEmailFooterText()}`,
   };
 }
 
@@ -171,9 +183,10 @@ export function reminderEmail(data: {
             <p style="margin: 0; color: #6b7280;"><strong>Where:</strong> ${data.location}</p>
           </div>
         </div>
+        ${kalendrEmailFooterHtml()}
       </div>
     `,
-    text: `Reminder: ${data.eventTitle} in ${timeLabel}\n\nWhen: ${data.dateTime}\nDuration: ${data.duration} min\nWhere: ${data.location}`,
+    text: `Reminder: ${data.eventTitle} in ${timeLabel}\n\nWhen: ${data.dateTime}\nDuration: ${data.duration} min\nWhere: ${data.location}${kalendrEmailFooterText()}`,
   };
 }
 
@@ -201,8 +214,9 @@ export function cancellationEmail(data: {
             ${data.reason ? `<p style="margin: 8px 0 0; color: #6b7280;"><strong>Reason:</strong> ${data.reason}</p>` : ''}
           </div>
         </div>
+        ${kalendrEmailFooterHtml()}
       </div>
     `,
-    text: `Meeting Cancelled: ${data.eventTitle}\nWas scheduled for: ${data.dateTime}\nCancelled by: ${data.cancelledBy}${data.reason ? `\nReason: ${data.reason}` : ''}`,
+    text: `Meeting Cancelled: ${data.eventTitle}\nWas scheduled for: ${data.dateTime}\nCancelled by: ${data.cancelledBy}${data.reason ? `\nReason: ${data.reason}` : ''}${kalendrEmailFooterText()}`,
   };
 }

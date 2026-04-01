@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { connectedCalendars } from '@/lib/db';
+import { syncGoogleCalendarsFromOAuth } from '@/lib/google-calendar';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
@@ -41,6 +41,13 @@ export async function GET(req: NextRequest) {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
     const googleUser = await userInfoRes.json();
+    const providerAccountId = googleUser.id || googleUser.email;
+
+    if (!googleUser.email || !providerAccountId) {
+      return NextResponse.redirect(
+        new URL('/dashboard/integrations?error=Google+Calendar+account+details+were+missing', appUrl)
+      );
+    }
 
     // Get current authenticated user
     const user = await getCurrentUser();
@@ -48,36 +55,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=Session+expired', appUrl));
     }
 
-    // Check if this Google calendar is already connected
-    const existing = connectedCalendars().findFirst({
-      where: { userId: user.id, provider: 'google', email: googleUser.email },
+    await syncGoogleCalendarsFromOAuth({
+      userId: user.id,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token || '',
+      expiresIn: tokens.expires_in,
+      accountEmail: googleUser.email,
+      accountExternalId: providerAccountId,
     });
-
-    if (existing) {
-      // Update tokens
-      connectedCalendars().update(existing.id, {
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token || existing.refreshToken,
-        tokenExpiry: tokens.expires_in
-          ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-          : existing.tokenExpiry,
-      });
-    } else {
-      // Create new connected calendar
-      connectedCalendars().create({
-        userId: user.id,
-        provider: 'google',
-        email: googleUser.email,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token || '',
-        tokenExpiry: tokens.expires_in
-          ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-          : '',
-        checkForConflicts: true,
-        addEventsTo: true,
-        isPrimary: connectedCalendars().count({ userId: user.id }) === 0,
-      });
-    }
 
     return NextResponse.redirect(
       new URL('/dashboard/integrations?success=Google+Calendar+connected', appUrl)

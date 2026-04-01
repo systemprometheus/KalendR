@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
-
-const integrations = () => db.collection<any>('integrations');
+import { getAppUrl, isValidIntegrationState, upsertIntegration } from '@/lib/integrations';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const error = req.nextUrl.searchParams.get('error');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
+  const state = req.nextUrl.searchParams.get('state');
+  const appUrl = getAppUrl(req);
 
   if (error || !code) {
     return NextResponse.redirect(
@@ -16,7 +15,18 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const tokenRes = await fetch('https://api.hubapi.com/oauth/v1/token', {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.redirect(new URL('/login?error=Session+expired', appUrl));
+    }
+
+    if (!isValidIntegrationState(state, 'hubspot', user.id)) {
+      return NextResponse.redirect(
+        new URL('/dashboard/integrations?error=HubSpot+connection+could+not+be+verified', appUrl)
+      );
+    }
+
+    const tokenRes = await fetch('https://api.hubspot.com/oauth/2026-03/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -29,37 +39,27 @@ export async function GET(req: NextRequest) {
     });
 
     const tokens = await tokenRes.json();
-    if (!tokens.access_token) {
+    if (!tokenRes.ok || !tokens.access_token) {
       console.error('HubSpot token exchange failed:', tokens);
       return NextResponse.redirect(
         new URL('/dashboard/integrations?error=HubSpot+connection+failed', appUrl)
       );
     }
 
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.redirect(new URL('/login?error=Session+expired', appUrl));
-    }
-
-    const existing = integrations().findFirst({
-      where: { userId: user.id, provider: 'hubspot' },
-    });
-
-    const data = {
+    upsertIntegration(user.id, 'hubspot', {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token || '',
       tokenExpiry: tokens.expires_in
         ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
         : '',
       email: '',
-      externalId: '',
-    };
-
-    if (existing) {
-      integrations().update(existing.id, data);
-    } else {
-      integrations().create({ userId: user.id, provider: 'hubspot', ...data });
-    }
+      externalId: tokens.hub_id ? String(tokens.hub_id) : '',
+      displayName: tokens.hub_id ? `Hub ID ${tokens.hub_id}` : 'HubSpot account',
+      scope: Array.isArray(tokens.scopes) ? tokens.scopes.join(' ') : (tokens.scope || ''),
+      metadata: {
+        hubId: tokens.hub_id ? String(tokens.hub_id) : '',
+      },
+    });
 
     return NextResponse.redirect(
       new URL('/dashboard/integrations?success=HubSpot+connected', appUrl)

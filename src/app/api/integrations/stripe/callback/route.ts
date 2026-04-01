@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { getAppUrl, isValidIntegrationState, upsertIntegration } from '@/lib/integrations';
 
-const integrations = () => db.collection<any>('integrations');
+async function fetchStripeAccountSummary(accessToken: string) {
+  const response = await fetch('https://api.stripe.com/v1/account', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return response.json();
+}
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const error = req.nextUrl.searchParams.get('error');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
+  const state = req.nextUrl.searchParams.get('state');
+  const appUrl = getAppUrl(req);
 
   if (error || !code) {
     return NextResponse.redirect(
@@ -16,6 +29,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.redirect(new URL('/login?error=Session+expired', appUrl));
+    }
+
+    if (!isValidIntegrationState(state, 'stripe', user.id)) {
+      return NextResponse.redirect(
+        new URL('/dashboard/integrations?error=Stripe+connection+could+not+be+verified', appUrl)
+      );
+    }
+
     // Exchange code for tokens via Stripe Connect OAuth
     const tokenRes = await fetch('https://connect.stripe.com/oauth/token', {
       method: 'POST',
@@ -24,39 +48,36 @@ export async function GET(req: NextRequest) {
         code,
         client_secret: process.env.STRIPE_SECRET_KEY!,
         grant_type: 'authorization_code',
+        redirect_uri: `${appUrl}/api/integrations/stripe/callback`,
       }),
     });
 
     const tokens = await tokenRes.json();
-    if (!tokens.stripe_user_id) {
+    if (!tokenRes.ok || !tokens.stripe_user_id) {
       console.error('Stripe token exchange failed:', tokens);
       return NextResponse.redirect(
         new URL('/dashboard/integrations?error=Stripe+connection+failed', appUrl)
       );
     }
 
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.redirect(new URL('/login?error=Session+expired', appUrl));
-    }
+    const account = await fetchStripeAccountSummary(tokens.access_token).catch(() => null);
 
-    const existing = integrations().findFirst({
-      where: { userId: user.id, provider: 'stripe' },
-    });
-
-    const data = {
+    upsertIntegration(user.id, 'stripe', {
       accessToken: tokens.access_token || '',
       refreshToken: tokens.refresh_token || '',
       externalId: tokens.stripe_user_id,
-      email: '',
+      email: account?.email || '',
+      displayName:
+        account?.business_profile?.name ||
+        account?.settings?.dashboard?.display_name ||
+        tokens.stripe_user_id,
+      scope: tokens.scope || 'read_write',
       tokenExpiry: '',
-    };
-
-    if (existing) {
-      integrations().update(existing.id, data);
-    } else {
-      integrations().create({ userId: user.id, provider: 'stripe', ...data });
-    }
+      metadata: {
+        livemode: Boolean(tokens.livemode),
+        country: account?.country || '',
+      },
+    });
 
     return NextResponse.redirect(
       new URL('/dashboard/integrations?success=Stripe+connected', appUrl)

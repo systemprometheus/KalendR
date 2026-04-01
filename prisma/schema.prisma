@@ -136,6 +136,11 @@ model ConnectedCalendar {
   provider     String  // google, microsoft
   providerAccountId String
   email        String
+  accountEmail String?
+  accountExternalId String?
+  calendarId   String?
+  calendarName String?
+  accessRole   String?
   accessToken  String
   refreshToken String?
   tokenExpiry  DateTime?

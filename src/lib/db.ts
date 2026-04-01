@@ -159,6 +159,7 @@ export const organizations = () => db.collection<any>('organizations');
 export const teams = () => db.collection<any>('teams');
 export const teamMembers = () => db.collection<any>('team_members');
 export const connectedCalendars = () => db.collection<any>('connected_calendars');
+export const integrations = () => db.collection<any>('integrations');
 export const eventTypes = () => db.collection<any>('event_types');
 export const eventTypeHosts = () => db.collection<any>('event_type_hosts');
 export const availabilitySchedules = () => db.collection<any>('availability_schedules');

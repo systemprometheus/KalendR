@@ -258,10 +258,10 @@ export default function LandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-white mb-3">Company</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white">About</a></li>
-                <li><a href="#" className="hover:text-white">Blog</a></li>
-                <li><a href="#" className="hover:text-white">Careers</a></li>
-                <li><a href="#" className="hover:text-white">Contact</a></li>
+                <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
+                <li><Link href="/data-deletion" className="hover:text-white">Data Deletion</Link></li>
+                <li><a href="mailto:support@kalendr.io" className="hover:text-white">Contact</a></li>
               </ul>
             </div>
           </div>
