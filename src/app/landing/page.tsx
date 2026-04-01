@@ -156,7 +156,7 @@ export default function LandingPage() {
                 price: '$0',
                 period: 'forever',
                 description: 'For individuals getting started',
-                features: ['3 event types', 'Unlimited bookings', '1 connected calendar', 'Google Meet & Zoom', 'Email notifications', 'Website embeds'],
+                features: ['Unlimited event types', 'Unlimited bookings', 'Calendar integrations', 'Google Meet & Zoom', 'Email notifications', 'Website embeds'],
                 cta: 'Get Started',
                 highlighted: false,
               },

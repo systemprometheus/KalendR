@@ -11,7 +11,7 @@ const PLANS = [
     name: 'Free',
     key: 'free',
     price: 0,
-    features: ['3 event types', 'Unlimited bookings', '1 connected calendar', 'Google Meet & Zoom', 'Email notifications', 'Website embeds'],
+    features: ['Unlimited event types', 'Unlimited bookings', 'Calendar integrations', 'Google Meet & Zoom', 'Email notifications', 'Website embeds'],
     cta: 'Current Plan',
     current: true,
   },

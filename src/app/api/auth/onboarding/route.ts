@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { users, eventTypes, availabilitySchedules } from '@/lib/db';
-import { generateSlug } from '@/lib/auth';
+import { ensureDefaultAvailabilitySchedule } from '@/lib/default-availability';
+import { ensureUserWorkspace } from '@/lib/default-user-setup';
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    let user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    user = ensureUserWorkspace(user);
+    const wasOnboardingComplete = Boolean(user.onboardingComplete);
 
     const body = await req.json();
     const { timezone, slug, welcomeMessage, createDefaultEvents } = body;
@@ -27,18 +31,14 @@ export async function POST(req: NextRequest) {
 
     users().update(user.id, updates);
 
-    // Update availability schedule timezone
-    if (timezone) {
-      const schedule = availabilitySchedules().findFirst({ where: { userId: user.id, isDefault: true } });
-      if (schedule) {
-        availabilitySchedules().update(schedule.id, { timezone });
-      }
+    // Ensure every user has a default schedule before we attach event types to it.
+    let schedule = ensureDefaultAvailabilitySchedule(user.id, timezone || user.timezone || 'America/New_York');
+    if (timezone && schedule) {
+      schedule = availabilitySchedules().update(schedule.id, { timezone }) || { ...schedule, timezone };
     }
 
     // Create default sales-focused event types
-    if (createDefaultEvents !== false) {
-      const schedule = availabilitySchedules().findFirst({ where: { userId: user.id, isDefault: true } });
-
+    if (!wasOnboardingComplete && createDefaultEvents !== false) {
       const defaults = [
         {
           title: 'Book a Demo',

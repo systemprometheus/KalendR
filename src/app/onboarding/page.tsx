@@ -56,12 +56,22 @@ export default function OnboardingPage() {
       .then(r => r.json())
       .then(data => {
         if (data.user) {
+          if (data.user.onboardingComplete) {
+            router.replace('/dashboard');
+            return;
+          }
+
           setUser(data.user);
           setSlug(data.user.slug || '');
+          setWelcomeMessage(data.user.welcomeMessage || 'Welcome! Please pick a time that works for you.');
           // Try to detect timezone
           try {
             const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            if (tz) setTimezone(findMatchingTimezone(tz));
+            if (data.user.timezone) {
+              setTimezone(data.user.timezone);
+            } else if (tz) {
+              setTimezone(findMatchingTimezone(tz));
+            }
           } catch {}
         } else {
           router.push('/login');

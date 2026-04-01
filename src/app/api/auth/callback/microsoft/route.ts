@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { users } from '@/lib/db';
 import { createSession, generateSlug } from '@/lib/auth';
+import { ensureUserWorkspace } from '@/lib/default-user-setup';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
@@ -47,13 +48,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=Could+not+get+email+from+Microsoft', appUrl));
     }
 
+    const normalizedEmail = String(email).toLowerCase();
+
     // Find or create user
-    let user = users().findFirst({ where: { email } });
+    let user = users().findFirst({ where: { email: normalizedEmail } });
 
     if (!user) {
-      const name = msUser.displayName || email.split('@')[0];
+      const name = msUser.displayName || normalizedEmail.split('@')[0];
       user = users().create({
-        email,
+        email: normalizedEmail,
         name,
         slug: generateSlug(name),
         passwordHash: '',
@@ -64,8 +67,10 @@ export async function GET(req: NextRequest) {
         avatarUrl: '',
       });
     } else if (!user.microsoftId) {
-      users().update(user.id, { microsoftId: msUser.id });
+      user = users().update(user.id, { microsoftId: msUser.id }) || user;
     }
+
+    user = ensureUserWorkspace(user);
 
     // Create session
     const sessionToken = await createSession(user.id);

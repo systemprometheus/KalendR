@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { users } from '@/lib/db';
 import { createSession, generateSlug } from '@/lib/auth';
+import { ensureUserWorkspace } from '@/lib/default-user-setup';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
@@ -44,14 +45,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=Could+not+get+email+from+Google', appUrl));
     }
 
+    const normalizedEmail = String(googleUser.email).toLowerCase();
+
     // Find or create user
-    let user = users().findFirst({ where: { email: googleUser.email } });
+    let user = users().findFirst({ where: { email: normalizedEmail } });
 
     if (!user) {
       // Create new user
-      const name = googleUser.name || googleUser.email.split('@')[0];
+      const name = googleUser.name || normalizedEmail.split('@')[0];
       user = users().create({
-        email: googleUser.email,
+        email: normalizedEmail,
         name,
         slug: generateSlug(name),
         passwordHash: '', // No password for OAuth users
@@ -63,8 +66,13 @@ export async function GET(req: NextRequest) {
       });
     } else if (!user.googleId) {
       // Link Google account to existing user
-      users().update(user.id, { googleId: googleUser.id, avatarUrl: user.avatarUrl || googleUser.picture || '' });
+      user = users().update(user.id, {
+        googleId: googleUser.id,
+        avatarUrl: user.avatarUrl || googleUser.picture || '',
+      }) || user;
     }
+
+    user = ensureUserWorkspace(user);
 
     // Create session
     const sessionToken = await createSession(user.id);
