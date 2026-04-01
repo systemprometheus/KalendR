@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { users, eventTypes, availabilitySchedules } from '@/lib/db';
 import { generateTimeSlots, getAvailableDates } from '@/lib/availability';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ username: string; slug: string }> }) {
   try {
     const { username, slug } = await params;

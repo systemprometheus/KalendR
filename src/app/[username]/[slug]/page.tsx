@@ -57,7 +57,9 @@ export default function BookingPage({ params }: PageProps) {
     const month = currentMonth.getMonth();
     const year = currentMonth.getFullYear();
 
-    fetch(`/api/scheduling/${username}/${slug}?month=${month}&year=${year}&timezone=${timezone}`)
+    fetch(`/api/scheduling/${username}/${slug}?month=${month}&year=${year}&timezone=${timezone}`, {
+      cache: 'no-store',
+    })
       .then(r => r.json())
       .then(data => {
         if (data.error) {
@@ -77,7 +79,9 @@ export default function BookingPage({ params }: PageProps) {
     if (!selectedDate) return;
     setLoadingSlots(true);
 
-    fetch(`/api/scheduling/${username}/${slug}?date=${selectedDate}&timezone=${timezone}`)
+    fetch(`/api/scheduling/${username}/${slug}?date=${selectedDate}&timezone=${timezone}`, {
+      cache: 'no-store',
+    })
       .then(r => r.json())
       .then(data => {
         setTimeSlots(data.timeSlots || []);
