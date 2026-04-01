@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { availabilitySchedules, availabilityRules, availabilityOverrides } from '@/lib/db';
+import { availabilitySchedules, availabilityRules, availabilityOverrides, eventTypes } from '@/lib/db';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -49,6 +49,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     availabilitySchedules().update(id, updates);
+
+    if (isDefault) {
+      eventTypes().updateMany({ userId: user.id }, { availabilityScheduleId: id });
+    }
 
     // Update rules if provided
     if (rules && Array.isArray(rules)) {
