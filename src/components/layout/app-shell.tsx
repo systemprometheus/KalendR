@@ -38,6 +38,7 @@ export function AppShell({ children, user }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const helpActive = pathname === '/help' || pathname.startsWith('/dashboard/help');
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -170,11 +171,17 @@ export function AppShell({ children, user }: AppShellProps) {
                 </div>
               )}
             </div>
-            {!collapsed && (
-              <button className="flex items-center gap-2 w-full px-2 py-1.5 mt-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                <HelpCircle className="w-4 h-4" /> Help
-              </button>
-            )}
+            <Link
+              href="/help"
+              className={`mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors ${
+                helpActive
+                  ? 'bg-blue-50 text-[#0069ff]'
+                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+              } ${collapsed ? 'justify-center' : ''}`}
+            >
+              <HelpCircle className="w-4 h-4" />
+              {!collapsed && 'Help'}
+            </Link>
           </div>
         </aside>
 

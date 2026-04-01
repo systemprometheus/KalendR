@@ -17,6 +17,32 @@ const PRICE_MAP: Record<string, { priceId: string; name: string }> = {
   },
 };
 
+async function getValidatedPriceId(stripe: Stripe, plan: string) {
+  const config = PRICE_MAP[plan];
+  const priceId = config?.priceId?.trim();
+
+  if (!priceId) {
+    throw new Error(`Billing is not configured for the ${config?.name || plan} plan.`);
+  }
+
+  if (!priceId.startsWith('price_')) {
+    throw new Error(`Billing configuration for the ${config.name} plan is invalid.`);
+  }
+
+  try {
+    const price = await stripe.prices.retrieve(priceId);
+
+    if (!price.active) {
+      throw new Error('inactive');
+    }
+
+    return price.id;
+  } catch (error) {
+    console.error(`Invalid Stripe price configured for ${plan}:`, error);
+    throw new Error(`Billing is temporarily unavailable for the ${config.name} plan.`);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -37,12 +63,13 @@ export async function POST(req: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
 
     const stripe = getStripe();
+    const priceId = await getValidatedPriceId(stripe, plan);
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
         {
-          price: PRICE_MAP[plan].priceId,
+          price: priceId,
           quantity: 1,
         },
       ],
