@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 
-const EVENT_COLORS = ['#0069ff', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16'];
+const EVENT_COLORS = ['#03b2d1', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16'];
 const LOCATION_TYPES = [
   { value: 'google_meet', label: 'Google Meet' },
   { value: 'zoom', label: 'Zoom' },
@@ -56,7 +56,7 @@ export default function EventTypesPage() {
 
   // Form state
   const [form, setForm] = useState({
-    title: '', slug: '', description: '', duration: 30, color: '#0069ff',
+    title: '', slug: '', description: '', duration: 30, color: '#03b2d1',
     locationType: 'google_meet', locationValue: '', eventTypeKind: 'one_on_one',
     minNotice: 240, maxFutureDays: 60, bufferBefore: 0, bufferAfter: 0,
     slotInterval: 0, dailyLimit: 0, confirmationMessage: '',
@@ -76,7 +76,7 @@ export default function EventTypesPage() {
   useEffect(() => { loadData(); }, []);
 
   const resetForm = () => setForm({
-    title: '', slug: '', description: '', duration: 30, color: '#0069ff',
+    title: '', slug: '', description: '', duration: 30, color: '#03b2d1',
     locationType: 'google_meet', locationValue: '', eventTypeKind: 'one_on_one',
     minNotice: 240, maxFutureDays: 60, bufferBefore: 0, bufferAfter: 0,
     slotInterval: 0, dailyLimit: 0, confirmationMessage: '',
@@ -168,7 +168,7 @@ export default function EventTypesPage() {
   ];
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>;
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" /></div>;
   }
 
   return (
@@ -194,7 +194,7 @@ export default function EventTypesPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-[#0069ff] text-[#0069ff]'
+                  ? 'border-[#03b2d1] text-[#03b2d1]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -214,14 +214,14 @@ export default function EventTypesPage() {
               placeholder="Search event types"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0069ff]/20 focus:border-[#0069ff] bg-white"
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03b2d1]/20 focus:border-[#03b2d1] bg-white"
             />
           </div>
 
           {/* User section */}
           <div className="flex items-center justify-between py-3 mb-1">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#0069ff] flex items-center justify-center text-white text-sm font-bold">
+              <div className="w-8 h-8 rounded-full bg-[#03b2d1] flex items-center justify-center text-white text-sm font-bold">
                 {user?.name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
               <span className="text-sm font-semibold text-gray-900">{user?.name || 'User'}</span>
@@ -230,7 +230,7 @@ export default function EventTypesPage() {
               <a
                 href={`/${user?.slug}`}
                 target="_blank"
-                className="flex items-center gap-1.5 text-sm text-[#0069ff] hover:underline"
+                className="flex items-center gap-1.5 text-sm text-[#03b2d1] hover:underline"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 View landing page
@@ -263,7 +263,7 @@ export default function EventTypesPage() {
 
                   {/* Checkbox area */}
                   <div className="px-4 py-4 flex-shrink-0">
-                    <input type="checkbox" className="rounded border-gray-300 text-[#0069ff] focus:ring-[#0069ff]" />
+                    <input type="checkbox" className="rounded border-gray-300 text-[#03b2d1] focus:ring-[#03b2d1]" />
                   </div>
 
                   {/* Event info */}
@@ -331,7 +331,7 @@ export default function EventTypesPage() {
       {activeTab === 'single_use' && (
         <div className="text-center py-16">
           <div className="w-16 h-16 mx-auto mb-4 bg-blue-50 rounded-full flex items-center justify-center">
-            <Link2 className="w-8 h-8 text-[#0069ff]" />
+            <Link2 className="w-8 h-8 text-[#03b2d1]" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Single-use links</h3>
           <p className="text-sm text-gray-500 max-w-md mx-auto">Create one-time booking links that expire after use. Perfect for high-touch prospect outreach.</p>
@@ -341,7 +341,7 @@ export default function EventTypesPage() {
       {activeTab === 'polls' && (
         <div className="text-center py-16">
           <div className="w-16 h-16 mx-auto mb-4 bg-blue-50 rounded-full flex items-center justify-center">
-            <Users className="w-8 h-8 text-[#0069ff]" />
+            <Users className="w-8 h-8 text-[#03b2d1]" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Meeting polls</h3>
           <p className="text-sm text-gray-500 max-w-md mx-auto">Let participants vote on the best time to meet. Great for group meetings and team scheduling.</p>

@@ -86,7 +86,7 @@ export default function AvailabilityPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>;
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" /></div>;
   }
 
   return (
@@ -115,7 +115,7 @@ export default function AvailabilityPage() {
               }}
               className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${
                 activeSchedule?.id === s.id
-                  ? 'border-[#0069ff] bg-blue-50'
+                  ? 'border-[#03b2d1] bg-blue-50'
                   : 'border-gray-200 hover:border-gray-300'
               }`}
             >
@@ -150,7 +150,7 @@ export default function AvailabilityPage() {
                           <button
                             onClick={() => toggleDay(i)}
                             className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                              isEnabled ? 'bg-[#0069ff] border-[#0069ff]' : 'border-gray-300'
+                              isEnabled ? 'bg-[#03b2d1] border-[#03b2d1]' : 'border-gray-300'
                             }`}
                           >
                             {isEnabled && <Check className="w-3 h-3 text-white" />}

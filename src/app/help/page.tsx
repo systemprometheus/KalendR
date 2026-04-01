@@ -31,7 +31,7 @@ export default async function HelpPage() {
             </Link>
             <Link
               href={user ? '/dashboard/event-types?create=true' : '/signup'}
-              className="inline-flex items-center rounded-full bg-[#0069ff] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0052cc]"
+              className="inline-flex items-center rounded-full bg-[#03b2d1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0292ab]"
             >
               {user ? 'Create event' : 'Get started'}
             </Link>

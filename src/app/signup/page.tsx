@@ -62,7 +62,7 @@ export default function SignupPage() {
       <div className="space-y-3 mb-6">
         <button
           onClick={() => handleOAuth('google')}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border-2 border-[#0069ff] bg-[#0069ff] text-white font-medium hover:bg-[#0052cc] hover:border-[#0052cc] transition-colors"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border-2 border-[#03b2d1] bg-[#03b2d1] text-white font-medium hover:bg-[#0292ab] hover:border-[#0292ab] transition-colors"
         >
           <div className="w-7 h-7 bg-white rounded flex items-center justify-center flex-shrink-0">
             <GoogleIcon className="w-4.5 h-4.5" />
@@ -92,7 +92,7 @@ export default function SignupPage() {
           onClick={() => setShowEmailForm(true)}
           className="w-full text-center text-sm font-medium"
         >
-          <span className="text-[#0069ff] hover:underline">Sign up free with email.</span>
+          <span className="text-[#03b2d1] hover:underline">Sign up free with email.</span>
           <span className="text-gray-400 ml-1">No credit card required.</span>
         </button>
       ) : (
@@ -135,7 +135,7 @@ export default function SignupPage() {
 
       <p className="mt-6 text-center text-sm text-gray-500">
         Already have an account?{' '}
-        <Link href="/login" className="text-[#0069ff] hover:text-[#0052cc] font-medium">
+        <Link href="/login" className="text-[#03b2d1] hover:text-[#0292ab] font-medium">
           Sign in
         </Link>
       </p>

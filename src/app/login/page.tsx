@@ -71,7 +71,7 @@ function LoginContent() {
       <div className="space-y-3 mb-6">
         <button
           onClick={() => handleOAuth('google')}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border-2 border-[#0069ff] bg-[#0069ff] text-white font-medium hover:bg-[#0052cc] hover:border-[#0052cc] transition-colors"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border-2 border-[#03b2d1] bg-[#03b2d1] text-white font-medium hover:bg-[#0292ab] hover:border-[#0292ab] transition-colors"
         >
           <div className="w-7 h-7 bg-white rounded flex items-center justify-center flex-shrink-0">
             <GoogleIcon className="w-4.5 h-4.5" />
@@ -99,7 +99,7 @@ function LoginContent() {
       {!showEmailForm ? (
         <button
           onClick={() => setShowEmailForm(true)}
-          className="w-full text-center text-sm text-[#0069ff] font-medium hover:underline"
+          className="w-full text-center text-sm text-[#03b2d1] font-medium hover:underline"
         >
           Sign in with email and password
         </button>
@@ -124,10 +124,10 @@ function LoginContent() {
 
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2">
-              <input type="checkbox" className="rounded border-gray-300 text-[#0069ff] focus:ring-[#0069ff]" />
+              <input type="checkbox" className="rounded border-gray-300 text-[#03b2d1] focus:ring-[#03b2d1]" />
               <span className="text-sm text-gray-600">Remember me</span>
             </label>
-            <Link href="/forgot-password" className="text-sm text-[#0069ff] hover:text-[#0052cc]">
+            <Link href="/forgot-password" className="text-sm text-[#03b2d1] hover:text-[#0292ab]">
               Forgot password?
             </Link>
           </div>
@@ -140,7 +140,7 @@ function LoginContent() {
 
       <p className="mt-6 text-center text-sm text-gray-500">
         Don't have an account?{' '}
-        <Link href="/signup" className="text-[#0069ff] hover:text-[#0052cc] font-medium">
+        <Link href="/signup" className="text-[#03b2d1] hover:text-[#0292ab] font-medium">
           Sign up free
         </Link>
       </p>

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
           slug: 'book-a-demo',
           description: 'Schedule a personalized product demo with our team',
           duration: 30,
-          color: '#0069ff',
+          color: '#03b2d1',
           locationType: 'google_meet',
           customQuestions: JSON.stringify([
             { id: 'company', label: 'Company Name', type: 'text', required: true },

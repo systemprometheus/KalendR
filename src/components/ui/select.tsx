@@ -19,7 +19,7 @@ export function Select({ label, error, options, className = '', id, ...props }: 
       )}
       <select
         id={selectId}
-        className={`block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#0069ff] focus:outline-none focus:ring-1 focus:ring-[#0069ff] transition-colors bg-white ${className}`}
+        className={`block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#03b2d1] focus:outline-none focus:ring-1 focus:ring-[#03b2d1] transition-colors bg-white ${className}`}
         {...props}
       >
         {options.map(opt => (

@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       slug: finalSlug,
       description: description || '',
       duration: duration || 30,
-      color: color || '#0069ff',
+      color: color || '#03b2d1',
       isActive: true,
       isArchived: false,
       userId: user.id,

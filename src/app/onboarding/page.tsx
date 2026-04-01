@@ -26,7 +26,7 @@ function Select({ label, value, onChange, options }: SelectProps) {
       <select
         value={value}
         onChange={onChange}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0069ff] text-sm"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#03b2d1] text-sm"
       >
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>
@@ -111,13 +111,13 @@ export default function OnboardingPage() {
             <div key={s.number} className="flex items-center">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step >= s.number ? 'bg-[#0069ff] text-white' : 'bg-gray-200 text-gray-500'
+                  step >= s.number ? 'bg-[#03b2d1] text-white' : 'bg-gray-200 text-gray-500'
                 }`}
               >
                 {step > s.number ? <Check className="w-4 h-4" /> : s.number}
               </div>
               {i < steps.length - 1 && (
-                <div className={`w-12 h-0.5 mx-1 ${step > s.number ? 'bg-[#0069ff]' : 'bg-gray-200'}`} />
+                <div className={`w-12 h-0.5 mx-1 ${step > s.number ? 'bg-[#03b2d1]' : 'bg-gray-200'}`} />
               )}
             </div>
           ))}
@@ -193,7 +193,7 @@ export default function OnboardingPage() {
 
               <div className="text-left bg-gray-50 rounded-lg p-4 mb-6 space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-[#0069ff]" />
+                  <div className="w-3 h-3 rounded-full bg-[#03b2d1]" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">Book a Demo</p>
                     <p className="text-xs text-gray-500">30 min • Google Meet</p>

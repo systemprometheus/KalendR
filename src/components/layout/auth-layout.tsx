@@ -5,7 +5,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex">
       {/* Left side - branding */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #0069ff 0%, #4f46e5 50%, #7c3aed 100%)' }}>
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12" style={{ background: 'linear-gradient(135deg, #03b2d1 0%, #0292ab 50%, #01788b 100%)' }}>
         <div className="max-w-md text-white">
           <div className="mb-8">
             <Logo size="xl" variant="light" />

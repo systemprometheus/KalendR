@@ -57,7 +57,7 @@ export default function BookingsPage() {
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {loading ? (
-        <div className="flex items-center justify-center h-40"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>
+        <div className="flex items-center justify-center h-40"><div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" /></div>
       ) : bookings.length === 0 ? (
         <EmptyState
           icon={<CalendarDays className="w-12 h-12" />}
@@ -74,7 +74,7 @@ export default function BookingsPage() {
                   <p className="text-2xl font-bold text-gray-900">{format(parseISO(booking.startTime), 'd')}</p>
                   <p className="text-xs text-gray-500">{format(parseISO(booking.startTime), 'MMM')}</p>
                 </div>
-                <div className="w-0.5 h-16 rounded-full self-center" style={{ backgroundColor: booking.eventType?.color || '#0069ff' }} />
+                <div className="w-0.5 h-16 rounded-full self-center" style={{ backgroundColor: booking.eventType?.color || '#03b2d1' }} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-gray-900">{booking.eventType?.title || 'Meeting'}</h3>
@@ -98,7 +98,7 @@ export default function BookingsPage() {
                 {booking.status === 'confirmed' && activeTab === 'upcoming' && (
                   <div className="flex items-center gap-2">
                     {booking.meetingUrl && (
-                      <a href={booking.meetingUrl} target="_blank" className="p-2 text-gray-400 hover:text-[#0069ff] hover:bg-blue-50 rounded-lg transition-colors">
+                      <a href={booking.meetingUrl} target="_blank" className="p-2 text-gray-400 hover:text-[#03b2d1] hover:bg-blue-50 rounded-lg transition-colors">
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}

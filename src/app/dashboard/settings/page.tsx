@@ -45,7 +45,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>;
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" /></div>;
   }
 
   return (
@@ -61,7 +61,7 @@ export default function SettingsPage() {
         </h2>
         <div className="space-y-4">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full bg-[#0069ff] flex items-center justify-center text-white text-2xl font-bold">
+            <div className="w-16 h-16 rounded-full bg-[#03b2d1] flex items-center justify-center text-white text-2xl font-bold">
               {form.name?.charAt(0)?.toUpperCase()}
             </div>
             <div>

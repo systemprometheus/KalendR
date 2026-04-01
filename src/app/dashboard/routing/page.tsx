@@ -86,7 +86,7 @@ export default function RoutingFormsPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>;
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" /></div>;
   }
 
   return (
@@ -120,7 +120,7 @@ export default function RoutingFormsPage() {
               <Card key={form.id}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <GitBranch className="w-5 h-5 text-[#0069ff]" />
+                    <GitBranch className="w-5 h-5 text-[#03b2d1]" />
                     <Badge variant={form.isActive ? 'success' : 'default'}>{form.isActive ? 'Active' : 'Inactive'}</Badge>
                   </div>
                   <button onClick={() => handleDelete(form.id)} className="p-1 text-gray-400 hover:text-red-500 rounded">

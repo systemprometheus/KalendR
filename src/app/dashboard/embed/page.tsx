@@ -46,7 +46,7 @@ export default function EmbedPage() {
   ];
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>;
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" /></div>;
   }
 
   return (
@@ -74,11 +74,11 @@ export default function EmbedPage() {
                   onClick={() => setEmbedType(type.id)}
                   className={`p-4 rounded-lg border text-left transition-all ${
                     embedType === type.id
-                      ? 'border-[#0069ff] bg-blue-50'
+                      ? 'border-[#03b2d1] bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <type.icon className={`w-5 h-5 mb-2 ${embedType === type.id ? 'text-[#0069ff]' : 'text-gray-400'}`} />
+                  <type.icon className={`w-5 h-5 mb-2 ${embedType === type.id ? 'text-[#03b2d1]' : 'text-gray-400'}`} />
                   <p className="text-sm font-medium text-gray-900">{type.label}</p>
                   <p className="text-xs text-gray-500 mt-1">{type.description}</p>
                 </button>

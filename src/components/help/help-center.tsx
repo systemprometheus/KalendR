@@ -89,20 +89,20 @@ export function HelpCenter() {
   return (
     <div className="space-y-10 animate-fade-in">
       <section
-        className="relative overflow-hidden rounded-[32px] border border-[#dbe7ff] bg-white p-6 shadow-[0_24px_70px_-38px_rgba(0,105,255,0.45)] sm:p-8 lg:p-10"
+        className="relative overflow-hidden rounded-[32px] border border-[#d9f6fb] bg-white p-6 shadow-[0_24px_70px_-38px_rgba(3,178,209,0.45)] sm:p-8 lg:p-10"
         style={{
           backgroundImage:
-            'radial-gradient(circle at top left, rgba(0,105,255,0.14), transparent 32%), radial-gradient(circle at 80% 20%, rgba(99,102,241,0.16), transparent 24%), linear-gradient(135deg, #ffffff 0%, #f8fbff 55%, #eef4ff 100%)',
+            'radial-gradient(circle at top left, rgba(3,178,209,0.14), transparent 32%), radial-gradient(circle at 80% 20%, rgba(2,146,171,0.16), transparent 24%), linear-gradient(135deg, #ffffff 0%, #f8fbff 55%, #effbfd 100%)',
         }}
       >
         <div className="absolute inset-y-0 right-0 hidden w-[36%] opacity-60 lg:block">
-          <div className="absolute right-12 top-12 h-36 w-36 rounded-full bg-[#0069ff]/10 blur-3xl" />
-          <div className="absolute bottom-8 right-6 h-48 w-48 rounded-full bg-indigo-400/10 blur-3xl" />
+          <div className="absolute right-12 top-12 h-36 w-36 rounded-full bg-[#03b2d1]/10 blur-3xl" />
+          <div className="absolute bottom-8 right-6 h-48 w-48 rounded-full bg-[#0292ab]/10 blur-3xl" />
         </div>
 
         <div className="relative max-w-4xl">
           <div className="mb-6 flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#c7d9ff] bg-white/80 px-4 py-2 text-sm font-semibold text-[#0052cc] shadow-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#bdebf3] bg-white/80 px-4 py-2 text-sm font-semibold text-[#0292ab] shadow-sm">
               <Sparkles className="h-4 w-4" />
               Help Center
             </span>
@@ -134,7 +134,7 @@ export function HelpCenter() {
                   startTransition(() => setQuery(nextValue));
                 }}
                 placeholder="Search help articles, settings, and workflows..."
-                className="w-full rounded-[22px] border border-[#cfdcff] bg-white px-14 py-4 text-base text-gray-900 shadow-[0_12px_30px_-24px_rgba(0,105,255,0.6)] outline-none transition focus:border-[#0069ff] focus:ring-4 focus:ring-[#0069ff]/10"
+                className="w-full rounded-[22px] border border-[#bdebf3] bg-white px-14 py-4 text-base text-gray-900 shadow-[0_12px_30px_-24px_rgba(3,178,209,0.6)] outline-none transition focus:border-[#03b2d1] focus:ring-4 focus:ring-[#03b2d1]/10"
                 spellCheck={false}
               />
               <div className="absolute right-4 top-1/2 hidden -translate-y-1/2 items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-500 md:flex">
@@ -151,7 +151,7 @@ export function HelpCenter() {
                   onClick={() => {
                     startTransition(() => setQuery(term));
                   }}
-                  className="rounded-full border border-[#d9e6ff] bg-white px-3 py-1.5 text-sm text-gray-600 transition hover:border-[#0069ff]/40 hover:text-[#0052cc]"
+                  className="rounded-full border border-[#d9f6fb] bg-white px-3 py-1.5 text-sm text-gray-600 transition hover:border-[#03b2d1]/40 hover:text-[#0292ab]"
                 >
                   {term}
                 </button>
@@ -173,12 +173,12 @@ export function HelpCenter() {
                 onClick={() => setSelectedCategory('all')}
                 className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition ${
                   selectedCategory === 'all'
-                    ? 'bg-[#eef4ff] text-[#0052cc]'
+                    ? 'bg-[#effbfd] text-[#0292ab]'
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                  selectedCategory === 'all' ? 'bg-white text-[#0069ff]' : 'bg-gray-100 text-gray-500'
+                  selectedCategory === 'all' ? 'bg-white text-[#03b2d1]' : 'bg-gray-100 text-gray-500'
                 }`}>
                   <Search className="h-4 w-4" />
                 </div>
@@ -198,11 +198,11 @@ export function HelpCenter() {
                     type="button"
                     onClick={() => setSelectedCategory(category.id)}
                     className={`mt-1 flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition ${
-                      active ? 'bg-[#eef4ff] text-[#0052cc]' : 'text-gray-600 hover:bg-gray-50'
+                      active ? 'bg-[#effbfd] text-[#0292ab]' : 'text-gray-600 hover:bg-gray-50'
                     }`}
                   >
                     <div className={`mt-0.5 flex h-10 w-10 items-center justify-center rounded-xl ${
-                      active ? 'bg-white text-[#0069ff]' : 'bg-gray-100 text-gray-500'
+                      active ? 'bg-white text-[#03b2d1]' : 'bg-gray-100 text-gray-500'
                     }`}>
                       <category.icon className="h-4 w-4" />
                     </div>
@@ -228,13 +228,13 @@ export function HelpCenter() {
                   key={card.title}
                   href={card.href}
                   external={card.external}
-                  className="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition hover:border-[#0069ff]/30 hover:text-[#0052cc]"
+                  className="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition hover:border-[#03b2d1]/30 hover:text-[#0292ab]"
                 >
                   <span className="flex items-center gap-3">
-                    <card.icon className="h-4 w-4 text-[#0069ff]" />
+                    <card.icon className="h-4 w-4 text-[#03b2d1]" />
                     {card.title}
                   </span>
-                  <ArrowUpRight className="h-4 w-4 text-gray-400 transition group-hover:text-[#0069ff]" />
+                  <ArrowUpRight className="h-4 w-4 text-gray-400 transition group-hover:text-[#03b2d1]" />
                 </ActionLink>
               ))}
             </div>
@@ -255,7 +255,7 @@ export function HelpCenter() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-[#eef4ff] px-3 py-1.5 text-sm font-medium text-[#0052cc]">
+              <span className="rounded-full bg-[#effbfd] px-3 py-1.5 text-sm font-medium text-[#0292ab]">
                 {visibleArticles.length} result{visibleArticles.length === 1 ? '' : 's'}
               </span>
               {(query || selectedCategory !== 'all') && (
@@ -278,16 +278,16 @@ export function HelpCenter() {
               {visibleArticles.map((article) => (
                 <Card
                   key={article.id}
-                  className="group rounded-[28px] border-[#e6ebf5] p-6 transition duration-200 hover:-translate-y-0.5 hover:border-[#bdd4ff] hover:shadow-[0_26px_60px_-44px_rgba(0,105,255,0.55)]"
+                  className="group rounded-[28px] border-[#e6ebf5] p-6 transition duration-200 hover:-translate-y-0.5 hover:border-[#95dfec] hover:shadow-[0_26px_60px_-44px_rgba(3,178,209,0.55)]"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-[#0069ff]">
+                      <p className="text-sm font-semibold text-[#03b2d1]">
                         {HELP_CATEGORIES.find((category) => category.id === article.categoryId)?.name}
                       </p>
                       <h3 className="mt-2 text-xl font-semibold text-gray-950">{article.title}</h3>
                     </div>
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4ff] text-[#0069ff] transition group-hover:bg-[#0069ff] group-hover:text-white">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#effbfd] text-[#03b2d1] transition group-hover:bg-[#03b2d1] group-hover:text-white">
                       <ChevronRight className="h-5 w-5" />
                     </div>
                   </div>
@@ -302,7 +302,7 @@ export function HelpCenter() {
                     <ol className="mt-3 space-y-2">
                       {article.quickAnswer.map((step) => (
                         <li key={step} className="flex items-start gap-3 text-sm leading-6 text-gray-700">
-                          <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-[#0069ff] shadow-sm">
+                          <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-semibold text-[#03b2d1] shadow-sm">
                             •
                           </span>
                           <span>{step}</span>
@@ -313,7 +313,7 @@ export function HelpCenter() {
 
                   <ActionLink
                     href={article.href}
-                    className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#0069ff] transition hover:text-[#0052cc]"
+                    className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#03b2d1] transition hover:text-[#0292ab]"
                   >
                     {article.hrefLabel}
                     <ArrowUpRight className="h-4 w-4" />
@@ -323,7 +323,7 @@ export function HelpCenter() {
             </section>
           ) : (
             <Card className="rounded-[28px] py-12 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#eef4ff] text-[#0069ff]">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#effbfd] text-[#03b2d1]">
                 <Search className="h-6 w-6" />
               </div>
               <h3 className="mt-5 text-xl font-semibold text-gray-950">No matching articles yet</h3>
@@ -336,7 +336,7 @@ export function HelpCenter() {
                   setSelectedCategory('all');
                   startTransition(() => setQuery(''));
                 }}
-                className="mt-6 inline-flex items-center rounded-full bg-[#0069ff] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0052cc]"
+                className="mt-6 inline-flex items-center rounded-full bg-[#03b2d1] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0292ab]"
               >
                 Reset search
               </button>
@@ -355,14 +355,14 @@ export function HelpCenter() {
                 <Link
                   key={shortcut.title}
                   href={shortcut.href}
-                  className="group rounded-[24px] border border-white bg-white p-5 shadow-[0_18px_45px_-38px_rgba(15,23,42,0.45)] transition hover:-translate-y-0.5 hover:border-[#bdd4ff]"
+                  className="group rounded-[24px] border border-white bg-white p-5 shadow-[0_18px_45px_-38px_rgba(15,23,42,0.45)] transition hover:-translate-y-0.5 hover:border-[#95dfec]"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef4ff] text-[#0069ff]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#effbfd] text-[#03b2d1]">
                     <shortcut.icon className="h-5 w-5" />
                   </div>
                   <h3 className="mt-4 text-lg font-semibold text-gray-950">{shortcut.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-gray-600">{shortcut.description}</p>
-                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#0069ff]">
+                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#03b2d1]">
                     Open
                     <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </span>
@@ -379,13 +379,13 @@ export function HelpCenter() {
                 className={`group relative overflow-hidden rounded-[30px] border p-7 ${
                   resource.tone === 'dark'
                     ? 'border-[#0f172a] bg-[#0f172a] text-white shadow-[0_24px_60px_-40px_rgba(15,23,42,0.85)]'
-                    : 'border-[#dbe7ff] bg-white text-gray-900 shadow-[0_24px_60px_-44px_rgba(0,105,255,0.45)]'
+                    : 'border-[#d9f6fb] bg-white text-gray-900 shadow-[0_24px_60px_-44px_rgba(3,178,209,0.45)]'
                 }`}
                 style={
                   resource.tone === 'light'
                     ? {
                         backgroundImage:
-                          'radial-gradient(circle at top right, rgba(0,105,255,0.16), transparent 28%), linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)',
+                          'radial-gradient(circle at top right, rgba(3,178,209,0.16), transparent 28%), linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)',
                       }
                     : {
                         backgroundImage:
@@ -394,7 +394,7 @@ export function HelpCenter() {
                 }
               >
                 <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-                  resource.tone === 'dark' ? 'bg-white/10 text-white' : 'bg-[#eef4ff] text-[#0069ff]'
+                  resource.tone === 'dark' ? 'bg-white/10 text-white' : 'bg-[#effbfd] text-[#03b2d1]'
                 }`}>
                   <resource.icon className="h-5 w-5" />
                 </div>
@@ -405,7 +405,7 @@ export function HelpCenter() {
                   {resource.description}
                 </p>
                 <span className={`mt-6 inline-flex items-center gap-2 text-sm font-semibold ${
-                  resource.tone === 'dark' ? 'text-white' : 'text-[#0069ff]'
+                  resource.tone === 'dark' ? 'text-white' : 'text-[#03b2d1]'
                 }`}>
                   {resource.cta}
                   <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -414,7 +414,7 @@ export function HelpCenter() {
             ))}
           </section>
 
-          <section className="rounded-[30px] border border-[#d9e6ff] bg-white p-7 shadow-[0_24px_60px_-44px_rgba(0,105,255,0.4)]">
+          <section className="rounded-[30px] border border-[#d9f6fb] bg-white p-7 shadow-[0_24px_60px_-44px_rgba(3,178,209,0.4)]">
             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-gray-400">Still need help?</p>
             <h2 className="mt-2 text-3xl font-semibold text-gray-950">Get human help when you need it</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600">
@@ -426,10 +426,10 @@ export function HelpCenter() {
                   key={card.title}
                   href={card.href}
                   external={card.external}
-                  className="group flex items-start justify-between rounded-[24px] border border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 transition hover:border-[#bdd4ff]"
+                  className="group flex items-start justify-between rounded-[24px] border border-gray-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 transition hover:border-[#95dfec]"
                 >
                   <div className="flex gap-4">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4ff] text-[#0069ff]">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#effbfd] text-[#03b2d1]">
                       <card.icon className="h-5 w-5" />
                     </div>
                     <div>
@@ -437,7 +437,7 @@ export function HelpCenter() {
                       <p className="mt-1 text-sm leading-6 text-gray-600">{card.description}</p>
                     </div>
                   </div>
-                  <ArrowUpRight className="mt-1 h-5 w-5 text-gray-400 transition group-hover:text-[#0069ff]" />
+                  <ArrowUpRight className="mt-1 h-5 w-5 text-gray-400 transition group-hover:text-[#03b2d1]" />
                 </ActionLink>
               ))}
             </div>
@@ -447,7 +447,7 @@ export function HelpCenter() {
             {HELP_CATEGORIES.map((category) => (
               <Card key={category.id} className="rounded-[24px] border-[#e6ebf5]">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4ff] text-[#0069ff]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#effbfd] text-[#03b2d1]">
                     <category.icon className="h-5 w-5" />
                   </div>
                   <div>
@@ -464,7 +464,7 @@ export function HelpCenter() {
                       className="group flex items-center justify-between rounded-2xl px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-50 hover:text-gray-950"
                     >
                       <span>{link.label}</span>
-                      <ChevronRight className="h-4 w-4 text-gray-400 transition group-hover:text-[#0069ff]" />
+                      <ChevronRight className="h-4 w-4 text-gray-400 transition group-hover:text-[#03b2d1]" />
                     </ActionLink>
                   ))}
                 </div>

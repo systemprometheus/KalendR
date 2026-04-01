@@ -89,7 +89,7 @@ export default function UserProfilePage({ params }: PageProps) {
                 className="w-4 h-4 rounded-full flex-shrink-0"
                 style={{ backgroundColor: et.color }}
               />
-              <span className="flex-1 text-sm font-semibold text-[#0069ff] group-hover:underline">
+              <span className="flex-1 text-sm font-semibold text-[#03b2d1] group-hover:underline">
                 {et.title}
               </span>
               <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -103,7 +103,7 @@ export default function UserProfilePage({ params }: PageProps) {
 
         {/* Cookie settings link */}
         <div className="px-8 pb-6">
-          <a href="#" className="text-xs text-[#0069ff] hover:underline">Cookie settings</a>
+          <a href="#" className="text-xs text-[#03b2d1] hover:underline">Cookie settings</a>
         </div>
       </div>
     </div>

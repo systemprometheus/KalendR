@@ -131,7 +131,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" />
+        <div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -180,7 +180,7 @@ export default function AnalyticsPage() {
             value: confirmedBookings.length,
             helper: `${upcomingBookings.length} upcoming`,
             icon: CalendarDays,
-            color: 'text-[#0069ff]',
+            color: 'text-[#03b2d1]',
           },
           {
             label: 'Confirmation rate',
@@ -251,7 +251,7 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#0069ff] rounded-full transition-all"
+                        className="h-full bg-[#03b2d1] rounded-full transition-all"
                         style={{ width: `${(day.count / maxWeekdayCount) * 100}%` }}
                       />
                     </div>
@@ -304,7 +304,7 @@ export default function AnalyticsPage() {
                   <h2 className="text-lg font-semibold text-gray-900">Top event types</h2>
                   <p className="text-sm text-gray-500 mt-1">Find out which meeting types drive the most activity.</p>
                 </div>
-                <Link href="/dashboard/event-types" className="text-sm text-[#0069ff] hover:text-[#0052cc] flex items-center gap-1">
+                <Link href="/dashboard/event-types" className="text-sm text-[#03b2d1] hover:text-[#0292ab] flex items-center gap-1">
                   Manage <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -348,7 +348,7 @@ export default function AnalyticsPage() {
                   <h2 className="text-lg font-semibold text-gray-900">Recent booking activity</h2>
                   <p className="text-sm text-gray-500 mt-1">The latest scheduling activity across your meetings.</p>
                 </div>
-                <Link href="/dashboard/bookings" className="text-sm text-[#0069ff] hover:text-[#0052cc] flex items-center gap-1">
+                <Link href="/dashboard/bookings" className="text-sm text-[#03b2d1] hover:text-[#0292ab] flex items-center gap-1">
                   View all <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>

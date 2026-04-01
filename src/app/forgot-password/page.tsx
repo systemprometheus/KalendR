@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
           <p className="text-gray-500 mb-6">
             We sent a password reset link to <strong>{email}</strong>
           </p>
-          <Link href="/login" className="text-[#0069ff] hover:text-[#0052cc] text-sm font-medium">
+          <Link href="/login" className="text-[#03b2d1] hover:text-[#0292ab] text-sm font-medium">
             Back to sign in
           </Link>
         </div>

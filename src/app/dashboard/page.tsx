@@ -41,7 +41,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" />
+        <div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -57,7 +57,7 @@ export default function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Upcoming Meetings', value: bookings.length, icon: CalendarDays, color: 'text-[#0069ff]' },
+          { label: 'Upcoming Meetings', value: bookings.length, icon: CalendarDays, color: 'text-[#03b2d1]' },
           { label: 'Active Event Types', value: eventTypes.filter((e: any) => e.isActive).length, icon: LayoutGrid, color: 'text-emerald-500' },
           { label: 'This Week', value: bookings.filter((b: any) => { const d = new Date(b.startTime); const now = new Date(); const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7); return d <= weekEnd; }).length, icon: Clock, color: 'text-amber-500' },
           { label: 'Today', value: bookings.filter((b: any) => isToday(parseISO(b.startTime))).length, icon: Calendar, color: 'text-violet-500' },
@@ -79,7 +79,7 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Upcoming Bookings</h2>
-            <Link href="/dashboard/bookings" className="text-sm text-[#0069ff] hover:text-[#0052cc] flex items-center gap-1">
+            <Link href="/dashboard/bookings" className="text-sm text-[#03b2d1] hover:text-[#0292ab] flex items-center gap-1">
               View all <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -97,7 +97,7 @@ export default function DashboardPage() {
               {bookings.slice(0, 5).map((booking: any) => (
                 <Card key={booking.id} className="hover:border-gray-300 transition-colors">
                   <div className="flex items-start gap-4">
-                    <div className="w-1 h-12 rounded-full" style={{ backgroundColor: booking.eventType?.color || '#0069ff' }} />
+                    <div className="w-1 h-12 rounded-full" style={{ backgroundColor: booking.eventType?.color || '#03b2d1' }} />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 truncate">{booking.inviteeName}</p>
                       <p className="text-sm text-gray-500">{booking.eventType?.title}</p>
@@ -117,7 +117,7 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900">Your Event Types</h2>
-            <Link href="/dashboard/event-types" className="text-sm text-[#0069ff] hover:text-[#0052cc] flex items-center gap-1">
+            <Link href="/dashboard/event-types" className="text-sm text-[#03b2d1] hover:text-[#0292ab] flex items-center gap-1">
               Manage <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

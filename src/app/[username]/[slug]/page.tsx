@@ -167,11 +167,11 @@ export default function BookingPage({ params }: PageProps) {
                 disabled={!isAvailable || isPast || !isCurrentMonth}
                 className={`h-10 w-full rounded-lg text-sm transition-all ${
                   isSelected
-                    ? 'bg-[#0069ff] text-white font-semibold'
+                    ? 'bg-[#03b2d1] text-white font-semibold'
                     : isAvailable && !isPast && isCurrentMonth
                     ? 'text-gray-900 hover:bg-blue-50 font-medium cursor-pointer'
                     : 'text-gray-300 cursor-default'
-                } ${isToday(day) && !isSelected ? 'ring-1 ring-[#0069ff]' : ''}`}
+                } ${isToday(day) && !isSelected ? 'ring-1 ring-[#03b2d1]' : ''}`}
               >
                 {format(day, 'd')}
               </button>
@@ -204,7 +204,7 @@ export default function BookingPage({ params }: PageProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" />
+        <div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -266,7 +266,7 @@ export default function BookingPage({ params }: PageProps) {
 
             {/* Host info */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-[#0069ff] flex items-center justify-center text-white font-bold text-lg">
+              <div className="w-12 h-12 rounded-full bg-[#03b2d1] flex items-center justify-center text-white font-bold text-lg">
                 {host?.name?.charAt(0)?.toUpperCase()}
               </div>
               <div>
@@ -332,7 +332,7 @@ export default function BookingPage({ params }: PageProps) {
 
                 {loadingSlots ? (
                   <div className="flex items-center justify-center h-40">
-                    <div className="animate-spin-slow w-6 h-6 border-2 border-[#0069ff] border-t-transparent rounded-full" />
+                    <div className="animate-spin-slow w-6 h-6 border-2 border-[#03b2d1] border-t-transparent rounded-full" />
                   </div>
                 ) : timeSlots.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No available times on this date</p>
@@ -344,8 +344,8 @@ export default function BookingPage({ params }: PageProps) {
                         onClick={() => handleSlotSelect(slot)}
                         className={`px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
                           selectedSlot?.time === slot.time
-                            ? 'border-[#0069ff] bg-[#0069ff] text-white'
-                            : 'border-gray-200 text-gray-700 hover:border-[#0069ff] hover:text-[#0069ff]'
+                            ? 'border-[#03b2d1] bg-[#03b2d1] text-white'
+                            : 'border-gray-200 text-gray-700 hover:border-[#03b2d1] hover:text-[#03b2d1]'
                         }`}
                       >
                         {format(new Date(slot.time), 'h:mm a')}
@@ -371,7 +371,7 @@ export default function BookingPage({ params }: PageProps) {
                       type="text"
                       value={formData.name}
                       onChange={e => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#0069ff] focus:border-[#0069ff] outline-none"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#03b2d1] focus:border-[#03b2d1] outline-none"
                       placeholder="Your full name"
                       required
                     />
@@ -383,7 +383,7 @@ export default function BookingPage({ params }: PageProps) {
                       type="email"
                       value={formData.email}
                       onChange={e => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#0069ff] focus:border-[#0069ff] outline-none"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#03b2d1] focus:border-[#03b2d1] outline-none"
                       placeholder="you@company.com"
                       required
                     />
@@ -399,7 +399,7 @@ export default function BookingPage({ params }: PageProps) {
                         <select
                           value={customResponses[q.id] || ''}
                           onChange={e => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#0069ff] focus:border-[#0069ff] outline-none bg-white"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#03b2d1] focus:border-[#03b2d1] outline-none bg-white"
                           required={q.required}
                         >
                           <option value="">Select...</option>
@@ -411,7 +411,7 @@ export default function BookingPage({ params }: PageProps) {
                         <textarea
                           value={customResponses[q.id] || ''}
                           onChange={e => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#0069ff] focus:border-[#0069ff] outline-none"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#03b2d1] focus:border-[#03b2d1] outline-none"
                           rows={3}
                           placeholder={q.placeholder || ''}
                           required={q.required}
@@ -421,7 +421,7 @@ export default function BookingPage({ params }: PageProps) {
                           type={q.type === 'phone' ? 'tel' : 'text'}
                           value={customResponses[q.id] || ''}
                           onChange={e => setCustomResponses({ ...customResponses, [q.id]: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#0069ff] focus:border-[#0069ff] outline-none"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#03b2d1] focus:border-[#03b2d1] outline-none"
                           placeholder={q.placeholder || ''}
                           required={q.required}
                         />
@@ -434,7 +434,7 @@ export default function BookingPage({ params }: PageProps) {
                     <textarea
                       value={formData.notes}
                       onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#0069ff] focus:border-[#0069ff] outline-none"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#03b2d1] focus:border-[#03b2d1] outline-none"
                       rows={3}
                       placeholder="Anything else you'd like us to know?"
                     />
@@ -443,7 +443,7 @@ export default function BookingPage({ params }: PageProps) {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full bg-[#0069ff] text-white py-2.5 rounded-lg font-medium hover:bg-[#0052cc] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-[#03b2d1] text-white py-2.5 rounded-lg font-medium hover:bg-[#0292ab] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {submitting ? (
                       <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full" />

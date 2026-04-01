@@ -62,7 +62,7 @@ export function AppShell({ children, user }: AppShellProps) {
         <aside className={`fixed inset-y-0 left-0 z-50 ${collapsed ? 'w-16' : 'w-[240px]'} bg-white border-r border-gray-200 transform transition-all duration-200 lg:translate-x-0 lg:static lg:flex lg:flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           {/* Logo + collapse */}
           <div className="flex items-center justify-between px-5 py-4">
-            {!collapsed && <Logo size="md" />}
+            {!collapsed && <Logo size="sm" />}
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="hidden lg:flex items-center justify-center w-7 h-7 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
@@ -78,7 +78,7 @@ export function AppShell({ children, user }: AppShellProps) {
           <div className="px-3 mb-2">
             <Link
               href="/dashboard/event-types?create=true"
-              className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-full border-2 border-[#0069ff] text-[#0069ff] text-sm font-semibold hover:bg-blue-50 transition-colors ${collapsed ? 'px-0' : 'px-4'}`}
+              className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-full border-2 border-[#03b2d1] text-[#03b2d1] text-sm font-semibold hover:bg-blue-50 transition-colors ${collapsed ? 'px-0' : 'px-4'}`}
             >
               <Plus className="w-4 h-4" />
               {!collapsed && '+ Create'}
@@ -95,14 +95,14 @@ export function AppShell({ children, user }: AppShellProps) {
                   href={item.href}
                   className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     active
-                      ? 'text-[#0069ff] bg-blue-50/50'
+                      ? 'text-[#03b2d1] bg-blue-50/50'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   {active && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-[#0069ff] rounded-r-full" />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-[#03b2d1] rounded-r-full" />
                   )}
-                  <item.icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-[#0069ff]' : 'text-gray-500'}`} />
+                  <item.icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-[#03b2d1]' : 'text-gray-500'}`} />
                   {!collapsed && item.name}
                 </Link>
               );
@@ -119,14 +119,14 @@ export function AppShell({ children, user }: AppShellProps) {
                   href={item.href}
                   className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     active
-                      ? 'text-[#0069ff] bg-blue-50/50'
+                      ? 'text-[#03b2d1] bg-blue-50/50'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   {active && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-[#0069ff] rounded-r-full" />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-[#03b2d1] rounded-r-full" />
                   )}
-                  <item.icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-[#0069ff]' : 'text-gray-500'}`} />
+                  <item.icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-[#03b2d1]' : 'text-gray-500'}`} />
                   {!collapsed && item.name}
                 </Link>
               );
@@ -140,7 +140,7 @@ export function AppShell({ children, user }: AppShellProps) {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className={`flex items-center gap-3 w-full p-2 rounded-lg hover:bg-gray-100 transition-colors ${collapsed ? 'justify-center' : ''}`}
               >
-                <div className="w-8 h-8 rounded-full bg-[#0069ff] flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[#03b2d1] flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
                   {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
                 {!collapsed && (
@@ -175,7 +175,7 @@ export function AppShell({ children, user }: AppShellProps) {
               href="/help"
               className={`mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors ${
                 helpActive
-                  ? 'bg-blue-50 text-[#0069ff]'
+                  ? 'bg-blue-50 text-[#03b2d1]'
                   : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
               } ${collapsed ? 'justify-center' : ''}`}
             >
@@ -200,7 +200,7 @@ export function AppShell({ children, user }: AppShellProps) {
             <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <Bell className="w-5 h-5 text-gray-500" />
             </button>
-            <div className="w-8 h-8 rounded-full bg-[#0069ff] flex items-center justify-center text-white text-sm font-medium cursor-pointer">
+            <div className="w-8 h-8 rounded-full bg-[#03b2d1] flex items-center justify-center text-white text-sm font-medium cursor-pointer">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </div>
           </div>

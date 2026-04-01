@@ -62,7 +62,7 @@ export default function RoutingFormPage({ params }: PageProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" />
+        <div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -114,7 +114,7 @@ export default function RoutingFormPage({ params }: PageProps) {
                   value={responses[field.id] || ''}
                   onChange={e => setResponses({ ...responses, [field.id]: e.target.value })}
                   required={field.required}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-1 focus:ring-[#0069ff] focus:border-[#0069ff] outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-1 focus:ring-[#03b2d1] focus:border-[#03b2d1] outline-none"
                 >
                   <option value="">Select...</option>
                   {(field.options || []).map((opt: string) => (
@@ -126,7 +126,7 @@ export default function RoutingFormPage({ params }: PageProps) {
                   value={responses[field.id] || ''}
                   onChange={e => setResponses({ ...responses, [field.id]: e.target.value })}
                   required={field.required}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#0069ff] focus:border-[#0069ff] outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#03b2d1] focus:border-[#03b2d1] outline-none"
                   rows={3}
                 />
               ) : (
@@ -135,7 +135,7 @@ export default function RoutingFormPage({ params }: PageProps) {
                   value={responses[field.id] || ''}
                   onChange={e => setResponses({ ...responses, [field.id]: e.target.value })}
                   required={field.required}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#0069ff] focus:border-[#0069ff] outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-[#03b2d1] focus:border-[#03b2d1] outline-none"
                   placeholder={field.placeholder || ''}
                 />
               )}
@@ -145,7 +145,7 @@ export default function RoutingFormPage({ params }: PageProps) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-[#0069ff] text-white py-2.5 rounded-lg font-medium hover:bg-[#0052cc] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-[#03b2d1] text-white py-2.5 rounded-lg font-medium hover:bg-[#0292ab] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? 'Submitting...' : 'Continue'} <ArrowRight className="w-4 h-4" />
           </button>

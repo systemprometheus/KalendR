@@ -107,7 +107,7 @@ export default function BillingPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>;
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" /></div>;
   }
 
   const currentPlan = org?.plan || 'free';
@@ -151,7 +151,7 @@ export default function BillingPage() {
         {PLANS.map(plan => {
           const isCurrent = currentPlan === plan.key;
           return (
-            <Card key={plan.name} className={`relative ${plan.popular ? 'border-[#0069ff] border-2' : ''}`}>
+            <Card key={plan.name} className={`relative ${plan.popular ? 'border-[#03b2d1] border-2' : ''}`}>
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge variant="info"><Zap className="w-3 h-3 mr-1" /> Most Popular</Badge>

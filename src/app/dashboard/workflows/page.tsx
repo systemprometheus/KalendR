@@ -33,9 +33,9 @@ export default function WorkflowsPage() {
             <div className="flex items-center gap-4">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${workflow.active ? 'bg-blue-100' : 'bg-gray-100'}`}>
                 {workflow.channel === 'email' ? (
-                  <Mail className={`w-5 h-5 ${workflow.active ? 'text-[#0069ff]' : 'text-gray-400'}`} />
+                  <Mail className={`w-5 h-5 ${workflow.active ? 'text-[#03b2d1]' : 'text-gray-400'}`} />
                 ) : (
-                  <MessageSquare className={`w-5 h-5 ${workflow.active ? 'text-[#0069ff]' : 'text-gray-400'}`} />
+                  <MessageSquare className={`w-5 h-5 ${workflow.active ? 'text-[#03b2d1]' : 'text-gray-400'}`} />
                 )}
               </div>
               <div className="flex-1">

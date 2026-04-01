@@ -35,14 +35,14 @@ export async function POST(req: NextRequest) {
       subject: 'Reset your kalendr.io password',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #0069ff; padding: 24px; text-align: center;">
+          <div style="background: #03b2d1; padding: 24px; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 20px;">Password Reset</h1>
           </div>
           <div style="padding: 32px; background: #fff; border: 1px solid #e5e7eb;">
             <p>Hi ${user.name},</p>
             <p>Click the button below to reset your password. This link expires in 1 hour.</p>
             <div style="text-align: center; margin: 32px 0;">
-              <a href="${resetUrl}" style="background: #0069ff; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; display: inline-block;">Reset Password</a>
+              <a href="${resetUrl}" style="background: #03b2d1; color: white; padding: 12px 32px; border-radius: 6px; text-decoration: none; display: inline-block;">Reset Password</a>
             </div>
             <p style="color: #6b7280; font-size: 14px;">If you didn't request this, you can safely ignore this email.</p>
           </div>

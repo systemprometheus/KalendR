@@ -54,12 +54,12 @@ export default function TeamPage() {
 
   const roleIcon = (role: string) => {
     if (role === 'owner') return <Crown className="w-4 h-4 text-amber-500" />;
-    if (role === 'admin') return <Shield className="w-4 h-4 text-[#0069ff]" />;
+    if (role === 'admin') return <Shield className="w-4 h-4 text-[#03b2d1]" />;
     return null;
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#0069ff] border-t-transparent rounded-full" /></div>;
+    return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" /></div>;
   }
 
   return (
@@ -86,7 +86,7 @@ export default function TeamPage() {
           {members.map(m => (
             <Card key={m.id}>
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#0069ff] flex items-center justify-center text-white font-medium">
+                <div className="w-10 h-10 rounded-full bg-[#03b2d1] flex items-center justify-center text-white font-medium">
                   {m.name?.charAt(0)?.toUpperCase()}
                 </div>
                 <div className="flex-1">
@@ -122,7 +122,7 @@ export default function TeamPage() {
               <Card key={team.id}>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-[#0069ff]" />
+                    <Users className="w-5 h-5 text-[#03b2d1]" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">{team.name}</h3>

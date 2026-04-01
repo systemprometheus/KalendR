@@ -64,7 +64,7 @@ export function bookingConfirmationEmail(data: {
     subject: `Confirmed: ${data.eventTitle} with ${data.hostName}`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #0069ff; padding: 24px; text-align: center;">
+        <div style="background: #03b2d1; padding: 24px; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 20px;">Meeting Confirmed</h1>
         </div>
         <div style="padding: 32px; background: #fff; border: 1px solid #e5e7eb;">
@@ -116,7 +116,7 @@ export function hostNotificationEmail(data: {
     subject: `New booking: ${data.eventTitle} with ${data.inviteeName}`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #0069ff; padding: 24px; text-align: center;">
+        <div style="background: #03b2d1; padding: 24px; text-align: center;">
           <h1 style="color: white; margin: 0; font-size: 20px;">New Meeting Booked</h1>
         </div>
         <div style="padding: 32px; background: #fff; border: 1px solid #e5e7eb;">
