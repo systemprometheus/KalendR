@@ -62,7 +62,7 @@ export function AppShell({ children, user }: AppShellProps) {
         <aside className={`fixed inset-y-0 left-0 z-50 ${collapsed ? 'w-16' : 'w-[240px]'} bg-white border-r border-gray-200 transform transition-all duration-200 lg:translate-x-0 lg:static lg:flex lg:flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           {/* Logo + collapse */}
           <div className="flex items-center justify-between px-5 py-4">
-            {!collapsed && <Logo size="sm" />}
+            {!collapsed && <Logo size="xs" />}
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="hidden lg:flex items-center justify-center w-7 h-7 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
@@ -81,7 +81,7 @@ export function AppShell({ children, user }: AppShellProps) {
               className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-full border-2 border-[#03b2d1] text-[#03b2d1] text-sm font-semibold hover:bg-blue-50 transition-colors ${collapsed ? 'px-0' : 'px-4'}`}
             >
               <Plus className="w-4 h-4" />
-              {!collapsed && '+ Create'}
+              {!collapsed && 'Create'}
             </Link>
           </div>
 

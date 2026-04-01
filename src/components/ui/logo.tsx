@@ -3,13 +3,14 @@
 import Image from 'next/image';
 
 interface LogoProps {
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   variant?: 'dark' | 'light';
   showText?: boolean;
   className?: string;
 }
 
 const sizeMap = {
+  xs: { wordmarkWidth: 87, wordmarkHeight: 17, iconWidth: 16, iconHeight: 17 },
   sm: { wordmarkWidth: 145, wordmarkHeight: 28, iconWidth: 26, iconHeight: 28 },
   md: { wordmarkWidth: 166, wordmarkHeight: 32, iconWidth: 29, iconHeight: 32 },
   lg: { wordmarkWidth: 207, wordmarkHeight: 40, iconWidth: 37, iconHeight: 40 },
@@ -33,7 +34,7 @@ export default function Logo({ size = 'md', variant = 'dark', showText = true, c
         width={width}
         height={height}
         className={imageClass}
-        priority={size !== 'sm'}
+        priority={size !== 'xs' && size !== 'sm'}
         draggable={false}
       />
     </div>
