@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { availabilitySchedules, availabilityRules } from '@/lib/db';
+import { ensureDefaultAvailabilitySchedule } from '@/lib/default-availability';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    ensureDefaultAvailabilitySchedule(user.id, user.timezone || 'America/New_York');
 
     const schedules = availabilitySchedules().findMany({
       where: { userId: user.id },
@@ -31,12 +34,13 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { name, timezone, rules } = await req.json();
+    const hasSchedules = availabilitySchedules().count({ userId: user.id }) > 0;
 
     const schedule = availabilitySchedules().create({
       name: name || 'New Schedule',
       userId: user.id,
       timezone: timezone || user.timezone,
-      isDefault: false,
+      isDefault: !hasSchedules,
     });
 
     // Create rules
