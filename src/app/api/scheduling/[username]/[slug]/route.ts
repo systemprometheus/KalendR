@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { users, eventTypes, availabilitySchedules } from '@/lib/db';
 import { generateTimeSlots, getAvailableDates } from '@/lib/availability';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ username: string; slug: string }> }) {
   try {
     const { username, slug } = await params;
@@ -62,7 +65,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
 
     // If requesting time slots for a specific date
     if (date) {
-      response.timeSlots = generateTimeSlots(et.id, date, timezone);
+      response.timeSlots = await generateTimeSlots(et.id, date, timezone);
     }
 
     return NextResponse.json(response);
