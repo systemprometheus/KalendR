@@ -110,7 +110,6 @@ export async function POST(req: NextRequest) {
         const params = new URLSearchParams({
           client_id: clientId,
           redirect_uri: redirectUri,
-          redirect_uri: redirectUri,
           scope: 'crm.objects.contacts.read crm.objects.contacts.write',
         });
         return NextResponse.json({ url: `https://app.hubspot.com/oauth/authorize?${params}` });
