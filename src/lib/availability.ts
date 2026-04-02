@@ -1,6 +1,7 @@
-import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts, connectedCalendars } from './db';
+import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts } from './db';
 import { addMinutes, startOfDay, endOfDay, format, parse, isAfter, isBefore, addDays, eachDayOfInterval, setHours, setMinutes } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { getGoogleCalendarBusyIntervals, hasBusyIntervalConflict, hasGoogleCalendarConflict, type BusyInterval } from './google-calendar';
 
 export interface TimeSlot {
   start: Date;
@@ -40,11 +41,12 @@ export function getAvailabilityForDate(
   return rules.map(r => ({ startTime: r.startTime, endTime: r.endTime }));
 }
 
-export function generateTimeSlots(
+export async function generateTimeSlots(
   eventTypeId: string,
   dateStr: string, // YYYY-MM-DD
   inviteeTimezone: string,
-): AvailableSlot[] {
+  preloadedBusyIntervals?: BusyInterval[],
+): Promise<AvailableSlot[]> {
   const et = eventTypes().findById(eventTypeId);
   if (!et || !et.isActive) return [];
 
@@ -75,6 +77,14 @@ export function generateTimeSlots(
     const bookingDate = b.startTime.substring(0, 10);
     return bookingDate === dateStr;
   });
+
+  const googleBusyIntervals = et.userId
+    ? (preloadedBusyIntervals || await getGoogleCalendarBusyIntervals(
+      et.userId,
+      dayStart,
+      dayEnd,
+    ))
+    : [];
 
   // Check daily limit
   if (et.dailyLimit) {
@@ -123,7 +133,7 @@ export function generateTimeSlots(
         const bStart = new Date(booking.startTime);
         const bEnd = new Date(booking.endTime);
         return slotWithBufferStart < bEnd && slotWithBufferEnd > bStart;
-      });
+      }) || hasBusyIntervalConflict(googleBusyIntervals, slotWithBufferStart, slotWithBufferEnd);
 
       if (!hasConflict) {
         slots.push({
@@ -139,12 +149,12 @@ export function generateTimeSlots(
   return slots;
 }
 
-export function getAvailableDates(
+export async function getAvailableDates(
   eventTypeId: string,
   month: number, // 0-indexed
   year: number,
   timezone: string,
-): string[] {
+): Promise<string[]> {
   const et = eventTypes().findById(eventTypeId);
   if (!et) return [];
 
@@ -157,8 +167,12 @@ export function getAvailableDates(
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const availableDates: string[] = [];
   const now = new Date();
-  const minNotice = et.minNotice || 0;
   const maxFutureDays = et.maxFutureDays || 60;
+  const monthStart = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0)).toISOString();
+  const monthEnd = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999)).toISOString();
+  const monthlyBusyIntervals = et.userId
+    ? await getGoogleCalendarBusyIntervals(et.userId, monthStart, monthEnd)
+    : [];
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -172,7 +186,7 @@ export function getAvailableDates(
 
     // Check if there's any availability on this day
     const windows = getAvailabilityForDate(schedule.id, dateStr);
-    if (windows.length > 0) {
+    if (windows.length > 0 && (await generateTimeSlots(et.id, dateStr, timezone, monthlyBusyIntervals)).length > 0) {
       availableDates.push(dateStr);
     }
   }
@@ -216,11 +230,11 @@ export function selectRoundRobinHost(eventTypeId: string): string | null {
 }
 
 // Check if all required hosts are available (collective events)
-export function checkCollectiveAvailability(
+export async function checkCollectiveAvailability(
   eventTypeId: string,
   startTime: Date,
   endTime: Date,
-): boolean {
+): Promise<boolean> {
   const hosts = eventTypeHosts().findMany({
     where: { eventTypeId, isRequired: true },
   });
@@ -235,6 +249,7 @@ export function checkCollectiveAvailability(
     });
 
     if (conflicts.length > 0) return false;
+    if (await hasGoogleCalendarConflict(host.userId, startTime, endTime)) return false;
   }
 
   return true;

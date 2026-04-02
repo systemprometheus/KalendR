@@ -144,6 +144,14 @@ model ConnectedCalendar {
   checkForConflicts Boolean @default(true)
   addEventsTo       Boolean @default(false) // whether to create events here
   isPrimary         Boolean @default(false)
+  watchChannelId    String?
+  watchResourceId   String?
+  watchResourceUri  String?
+  watchExpiration   DateTime?
+  watchToken        String?
+  watchCursorUpdatedAt DateTime?
+  watchLastWebhookAt   DateTime?
+  watchLastMessageNumber Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

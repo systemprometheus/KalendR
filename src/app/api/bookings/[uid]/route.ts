@@ -2,7 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { bookings, eventTypes, users } from '@/lib/db';
 import { sendEmail, cancellationEmail } from '@/lib/email';
+import { deleteGoogleCalendarEventForBooking, ensureGoogleCalendarWatches } from '@/lib/google-calendar';
 import { format } from 'date-fns';
+
+function parseBookingMetadata(metadata?: string | null) {
+  if (!metadata) return null;
+
+  try {
+    return JSON.parse(metadata);
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
   try {
@@ -48,10 +59,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
+      const bookingMetadata = parseBookingMetadata(booking.metadata);
+      if (booking.calendarEventId || bookingMetadata?.googleCalendar?.eventId) {
+        await deleteGoogleCalendarEventForBooking({
+          userId: booking.hostId,
+          eventId: bookingMetadata?.googleCalendar?.eventId || booking.calendarEventId,
+          connectedCalendarId: bookingMetadata?.googleCalendar?.connectedCalendarId,
+          calendarId: bookingMetadata?.googleCalendar?.calendarId,
+        });
+      }
+
       bookings().update(booking.id, {
         status: 'cancelled',
         cancelReason: reason || null,
         cancelledAt: new Date().toISOString(),
+      });
+
+      await ensureGoogleCalendarWatches(booking.hostId).catch((error) => {
+        console.error('Failed to refresh Google Calendar watches after cancellation', error);
       });
 
       // Send cancellation emails
@@ -98,9 +123,23 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
         return NextResponse.json({ error: 'New start time is required' }, { status: 400 });
       }
 
+      const bookingMetadata = parseBookingMetadata(booking.metadata);
+      if (booking.calendarEventId || bookingMetadata?.googleCalendar?.eventId) {
+        await deleteGoogleCalendarEventForBooking({
+          userId: booking.hostId,
+          eventId: bookingMetadata?.googleCalendar?.eventId || booking.calendarEventId,
+          connectedCalendarId: bookingMetadata?.googleCalendar?.connectedCalendarId,
+          calendarId: bookingMetadata?.googleCalendar?.calendarId,
+        });
+      }
+
       // Mark old booking as rescheduled
       bookings().update(booking.id, {
         status: 'rescheduled',
+      });
+
+      await ensureGoogleCalendarWatches(booking.hostId).catch((error) => {
+        console.error('Failed to refresh Google Calendar watches after reschedule', error);
       });
 
       // Return info to create new booking

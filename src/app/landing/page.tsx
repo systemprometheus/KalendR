@@ -265,11 +265,16 @@ export default function LandingPage() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
-            &copy; 2026 kalendr.io. All rights reserved.
-          </div>
-        </div>
-      </footer>
+	          <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
+	            <div className="flex flex-wrap items-center justify-center gap-4">
+	              <span>&copy; 2026 kalendr.io. All rights reserved.</span>
+	              <Link href="/privacy" className="hover:text-white">Privacy</Link>
+	              <Link href="/terms" className="hover:text-white">Terms</Link>
+	              <Link href="/data-deletion" className="hover:text-white">Data deletion</Link>
+	            </div>
+	          </div>
+	        </div>
+	      </footer>
     </div>
   );
 }

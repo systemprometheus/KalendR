@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Link2, CheckCircle, AlertCircle } from 'lucide-react';
@@ -142,6 +143,20 @@ export default function IntegrationsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
         <p className="text-gray-500 mt-1">Connect your tools to streamline scheduling workflows</p>
       </div>
+
+      <Card>
+        <h2 className="text-lg font-semibold text-gray-900">Google Calendar data use</h2>
+        <p className="mt-2 text-sm leading-7 text-gray-600">
+          KalendR uses Google Calendar data only to list your calendars, check busy times for conflict
+          detection, create and delete booking events on your connected booking calendar, generate Google
+          Meet links when selected, and keep KalendR bookings synced with Google-side changes.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-4 text-sm">
+          <Link href="/privacy" className="text-[#03b2d1] hover:underline">Privacy Policy</Link>
+          <Link href="/terms" className="text-[#03b2d1] hover:underline">Terms</Link>
+          <Link href="/data-deletion" className="text-[#03b2d1] hover:underline">Data deletion</Link>
+        </div>
+      </Card>
 
       {connectedCalendars.length > 0 && (
         <Card>

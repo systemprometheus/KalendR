@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { buildGoogleCalendarOAuthUrl } from '@/lib/google-calendar';
 
 // Central integration connect endpoint - generates OAuth URLs for all providers
 export async function POST(req: NextRequest) {
@@ -14,17 +15,7 @@ export async function POST(req: NextRequest) {
       case 'google': {
         const clientId = process.env.GOOGLE_CLIENT_ID;
         if (!clientId) return notConfigured('Google Calendar', 'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
-
-        const redirectUri = `${baseUrl}/api/integrations/calendars/google/callback`;
-        const params = new URLSearchParams({
-          client_id: clientId,
-          redirect_uri: redirectUri,
-          response_type: 'code',
-          scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email',
-          access_type: 'offline',
-          prompt: 'consent',
-        });
-        return NextResponse.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+        return NextResponse.json({ url: buildGoogleCalendarOAuthUrl(baseUrl, clientId) });
       }
 
       case 'microsoft': {
@@ -59,20 +50,9 @@ export async function POST(req: NextRequest) {
       }
 
       case 'google_meet': {
-        // Google Meet uses Google Calendar API - same OAuth flow but with meet scope
-        const clientId = process.env.GOOGLE_CLIENT_ID;
-        if (!clientId) return notConfigured('Google Meet', 'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
-
-        const redirectUri = `${baseUrl}/api/integrations/google-meet/callback`;
-        const params = new URLSearchParams({
-          client_id: clientId,
-          redirect_uri: redirectUri,
-          response_type: 'code',
-          scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email',
-          access_type: 'offline',
-          prompt: 'consent',
-        });
-        return NextResponse.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+        return NextResponse.json({
+          error: 'Google Meet is configured through your Google Calendar connection.',
+        }, { status: 400 });
       }
 
       case 'stripe': {

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { connectedCalendars } from '@/lib/db';
+import { buildGoogleCalendarOAuthUrl, ensureGoogleCalendarWatches } from '@/lib/google-calendar';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    await ensureGoogleCalendarWatches(user.id).catch((error) => {
+      console.error('Failed to ensure Google Calendar watches', error);
+    });
 
     const calendars = connectedCalendars().findMany({ where: { userId: user.id } });
 
@@ -14,9 +19,16 @@ export async function GET(req: NextRequest) {
       id: c.id,
       provider: c.provider,
       email: c.email,
+      accountEmail: c.accountEmail || c.email,
+      accountExternalId: c.accountExternalId || '',
+      calendarId: c.calendarId || '',
+      calendarName: c.calendarName || '',
+      accessRole: c.accessRole || '',
       checkForConflicts: c.checkForConflicts,
       addEventsTo: c.addEventsTo,
       isPrimary: c.isPrimary,
+      watchExpiration: c.watchExpiration || '',
+      watchLastWebhookAt: c.watchLastWebhookAt || '',
       createdAt: c.createdAt,
     }));
 
@@ -45,17 +57,7 @@ export async function POST(req: NextRequest) {
         }, { status: 501 });
       }
 
-      const redirectUri = `${baseUrl}/api/integrations/calendars/google/callback`;
-      const params = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        response_type: 'code',
-        scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email',
-        access_type: 'offline',
-        prompt: 'consent',
-      });
-
-      return NextResponse.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+      return NextResponse.json({ url: buildGoogleCalendarOAuthUrl(baseUrl, clientId) });
     }
 
     if (provider === 'microsoft') {
