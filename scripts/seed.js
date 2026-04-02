@@ -5,6 +5,12 @@
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
+const { randomUUID } = require('crypto');
+
+if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+  console.error('Refusing to run seed in production without ALLOW_PRODUCTION_SEED=true');
+  process.exit(1);
+}
 
 // Setup data directory
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -32,7 +38,7 @@ function writeCollection(collection, data) {
 }
 
 function generateId() {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+  return randomUUID();
 }
 
 function create(collection, data) {

@@ -1,11 +1,20 @@
 import fs from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(process.cwd(), 'data');
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+try {
+  fs.accessSync(DATA_DIR, fs.constants.R_OK | fs.constants.W_OK);
+} catch (error) {
+  throw new Error(`DATA_DIR is not readable/writable: ${DATA_DIR}`);
 }
 
 type WhereClause<T> = Partial<T> & { [key: string]: any };
@@ -30,7 +39,10 @@ function readCollection<T>(collection: string): T[] {
 
 function writeCollection<T>(collection: string, data: T[]): void {
   const filePath = getFilePath(collection);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  // Atomic write to reduce risk of partial/corrupt files on crash/restart.
+  const tmpPath = `${filePath}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2));
+  fs.renameSync(tmpPath, filePath);
 }
 
 function matchesWhere<T extends Record<string, any>>(item: T, where: WhereClause<T>): boolean {
@@ -51,7 +63,7 @@ function matchesWhere<T extends Record<string, any>>(item: T, where: WhereClause
 }
 
 function generateId(): string {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+  return randomUUID();
 }
 
 export const db = {

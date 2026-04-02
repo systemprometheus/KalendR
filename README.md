@@ -98,6 +98,7 @@ DATABASE_URL="file:./dev.db"
 JWT_SECRET="your-jwt-secret-min-32-chars"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 NEXT_PUBLIC_APP_NAME="KalendR"
+DATA_DIR="./data"
 
 # Email (optional for dev - logs to console)
 SMTP_HOST=""
@@ -220,10 +221,25 @@ ZOOM_CLIENT_SECRET=""
 
 ## Production Deployment
 
-1. Set up PostgreSQL and update DATABASE_URL
-2. Run Prisma migrations: `npx prisma migrate deploy`
-3. Configure OAuth (Google Calendar, Microsoft, Zoom)
-4. Set up Stripe billing
-5. Configure SMTP email provider
-6. Deploy to Vercel/Railway/Render
-7. Set all environment variables
+### Render (current file-based DB)
+
+1. Use the included [render.yaml](/Users/0xpyre/KalendR/render.yaml).
+2. Ensure a **Persistent Disk** is attached (already defined in `render.yaml`).
+3. Keep `DATA_DIR` on the mounted disk (`/var/data/kalendr-data`).
+4. Run exactly:
+   `buildCommand: npm install && npm run build`
+   `startCommand: npm run start`
+5. Do **not** run `npm run db:seed` in production deploy hooks.
+6. Scale web service to **1 instance** when using file-based storage.
+
+### Important Notes
+
+- Current runtime persistence is JSON files in `DATA_DIR`.
+- Production data loss happens if filesystem is ephemeral or if seed script runs.
+- The seed script is now blocked in production unless `ALLOW_PRODUCTION_SEED=true`.
+
+### Future Upgrade (recommended)
+
+1. Move runtime storage from JSON files to PostgreSQL.
+2. Apply Prisma migrations with `npx prisma migrate deploy`.
+3. Remove file-based `DATA_DIR` dependency.
