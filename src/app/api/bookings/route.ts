@@ -5,6 +5,82 @@ import { generateTimeSlots, selectRoundRobinHost, checkCollectiveAvailability } 
 import { sendEmail, bookingConfirmationEmail, hostNotificationEmail } from '@/lib/email';
 import { addMinutes, format } from 'date-fns';
 
+function escapeIcsText(value: string) {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\r?\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+}
+
+function toIcsDateTime(value: string | Date) {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function buildBookingIcsInvite(params: {
+  bookingUid: string;
+  eventTitle: string;
+  startTime: string;
+  endTime: string;
+  hostName: string;
+  hostEmail: string;
+  inviteeName: string;
+  inviteeEmail: string;
+  description: string;
+  location: string;
+  meetingUrl?: string | null;
+  appUrl: string;
+}) {
+  const {
+    bookingUid,
+    eventTitle,
+    startTime,
+    endTime,
+    hostName,
+    hostEmail,
+    inviteeName,
+    inviteeEmail,
+    description,
+    location,
+    meetingUrl,
+    appUrl,
+  } = params;
+
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'PRODID:-//Kalendrio//Booking//EN',
+    'VERSION:2.0',
+    'CALSCALE:GREGORIAN',
+    'METHOD:REQUEST',
+    'BEGIN:VEVENT',
+    `UID:${escapeIcsText(`${bookingUid}@kalendrio`)}`,
+    `DTSTAMP:${toIcsDateTime(new Date())}`,
+    `DTSTART:${toIcsDateTime(startTime)}`,
+    `DTEND:${toIcsDateTime(endTime)}`,
+    `SUMMARY:${escapeIcsText(eventTitle)}`,
+    `DESCRIPTION:${escapeIcsText(description)}`,
+    `ORGANIZER;CN=${escapeIcsText(hostName)}:MAILTO:${hostEmail}`,
+    `ATTENDEE;CN=${escapeIcsText(inviteeName)};RSVP=TRUE:MAILTO:${inviteeEmail}`,
+    `ATTENDEE;CN=${escapeIcsText(hostName)};RSVP=TRUE:MAILTO:${hostEmail}`,
+    `LOCATION:${escapeIcsText(location)}`,
+    `URL:${escapeIcsText(meetingUrl || `${appUrl}/booking/${bookingUid}`)}`,
+    'STATUS:CONFIRMED',
+    'SEQUENCE:0',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ];
+
+  return lines.join('\r\n');
+}
+
+function normalizeHttpUrl(value?: string | null) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  return trimmed;
+}
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -138,6 +214,30 @@ export async function POST(req: NextRequest) {
 
     if (host) {
       // Send confirmation to invitee
+      const fallbackMeetingUrl = normalizeHttpUrl(booking.meetingUrl)
+        || normalizeHttpUrl(booking.locationValue);
+      const emailLocation = fallbackMeetingUrl
+        || booking.locationValue
+        || locationType;
+      const icsInvite = buildBookingIcsInvite({
+        bookingUid: booking.uid,
+        eventTitle: et.title,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        hostName: host.name,
+        hostEmail: host.email,
+        inviteeName,
+        inviteeEmail,
+        description: `Meeting booked via Kalendrio with ${host.name}.`,
+        location: emailLocation,
+        meetingUrl: fallbackMeetingUrl,
+        appUrl,
+      });
+      const calendarInviteAttachment = {
+        filename: `kalendrio-${booking.uid}.ics`,
+        content: Buffer.from(icsInvite, 'utf-8').toString('base64'),
+        contentType: 'text/calendar; method=REQUEST; charset=UTF-8',
+      };
       const confirmEmail = bookingConfirmationEmail({
         inviteeName,
         hostName: host.name,
@@ -145,11 +245,14 @@ export async function POST(req: NextRequest) {
         dateTime: dateTimeStr,
         timezone: timezone || 'America/New_York',
         duration: et.duration,
-        location: locationValue || locationType,
+        location: emailLocation,
+        meetingUrl: fallbackMeetingUrl,
+        calendarInviteUrl: null,
         cancelUrl: `${appUrl}/booking/${booking.uid}/cancel?token=${booking.cancelToken}`,
         rescheduleUrl: `${appUrl}/booking/${booking.uid}/reschedule?token=${booking.rescheduleToken}`,
       });
       confirmEmail.to = inviteeEmail;
+      confirmEmail.attachments = [calendarInviteAttachment];
       sendEmail(confirmEmail);
 
       // Send notification to host
@@ -161,9 +264,12 @@ export async function POST(req: NextRequest) {
         dateTime: dateTimeStr,
         timezone: timezone || 'America/New_York',
         duration: et.duration,
-        location: locationValue || locationType,
+        location: emailLocation,
+        meetingUrl: fallbackMeetingUrl,
+        calendarInviteUrl: null,
       });
       hostEmail.to = host.email;
+      hostEmail.attachments = [calendarInviteAttachment];
       sendEmail(hostEmail);
     }
 

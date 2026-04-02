@@ -7,6 +7,11 @@ interface EmailOptions {
   html: string;
   text?: string;
   replyTo?: string;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    contentType?: string;
+  }>;
 }
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
@@ -30,6 +35,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         html: options.html,
         text: options.text,
         reply_to: options.replyTo,
+        attachments: options.attachments,
       }),
     });
 
