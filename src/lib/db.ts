@@ -2,20 +2,29 @@ import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 
-const DATA_DIR = process.env.DATA_DIR
-  ? path.resolve(process.env.DATA_DIR)
-  : path.join(process.cwd(), 'data');
+function resolveWritableDataDir(): string {
+  const preferred = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : null;
+  const candidates = [
+    preferred,
+    path.join(process.cwd(), 'data'),
+    path.join('/tmp', 'kalendr-data'),
+  ].filter((value): value is string => Boolean(value));
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+  for (const dir of candidates) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.accessSync(dir, fs.constants.R_OK | fs.constants.W_OK);
+      return dir;
+    } catch {
+      // Try next candidate.
+    }
+  }
 
-try {
-  fs.accessSync(DATA_DIR, fs.constants.R_OK | fs.constants.W_OK);
-} catch (error) {
-  throw new Error(`DATA_DIR is not readable/writable: ${DATA_DIR}`);
+  throw new Error(
+    `No writable data directory found. Tried: ${candidates.join(', ')}`
+  );
 }
+const DATA_DIR = resolveWritableDataDir();
 
 type WhereClause<T> = Partial<T> & { [key: string]: any };
 
