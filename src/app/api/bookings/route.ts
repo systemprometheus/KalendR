@@ -195,13 +195,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const looksLikeGoogleMeetPlaceholder = (value: string | null | undefined) => {
+      if (!value) return false;
+      const normalized = value.toLowerCase();
+      return normalized.includes('google meet');
+    };
+
     // Determine location
     const bookingStatus = et.requiresConfirmation ? 'pending' : 'confirmed';
     let locationType = et.locationType;
     let locationValue = et.locationValue;
     let meetingUrl = null;
 
-    if (locationType === 'google_meet') {
+    // Handle legacy/custom event types that stored "Google Meet" as free text.
+    if (locationType === 'google_meet' || looksLikeGoogleMeetPlaceholder(locationValue)) {
+      locationType = 'google_meet';
       locationValue = 'Google Meet';
     } else if (locationType === 'zoom') {
       // TODO: Create real Zoom meeting via Zoom API when Zoom integration is connected

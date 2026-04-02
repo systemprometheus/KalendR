@@ -812,6 +812,49 @@ async function fetchGoogleCalendarEvent(
   return await response.json() as GoogleCalendarEvent;
 }
 
+async function requestGoogleMeetConference(
+  calendar: ConnectedGoogleCalendar,
+  eventId: string,
+) {
+  const response = await googleCalendarApiRequest(
+    calendar,
+    `/calendars/${encodeURIComponent(calendar.calendarId)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        conferenceData: {
+          createRequest: {
+            requestId: randomUUID(),
+            conferenceSolutionKey: {
+              type: 'hangoutsMeet',
+            },
+          },
+        },
+      }),
+    },
+    {
+      conferenceDataVersion: '1',
+      sendUpdates: 'all',
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Google Meet conference patch failed', {
+      calendarId: calendar.calendarId,
+      eventId,
+      status: response.status,
+      errorText,
+    });
+    return null;
+  }
+
+  return await response.json() as GoogleCalendarEvent;
+}
+
 export async function createGoogleCalendarEventForBooking(params: {
   booking: Booking;
   eventType: EventType;
@@ -903,6 +946,23 @@ export async function createGoogleCalendarEventForBooking(params: {
     if (refreshedEvent) {
       meetingUrl = extractGoogleMeetingUrl(refreshedEvent);
       htmlLink = refreshedEvent.htmlLink || htmlLink;
+    }
+  }
+
+  // If Meet still isn't attached, explicitly patch conference data and fetch again.
+  if (booking.locationType === 'google_meet' && data?.id && !meetingUrl) {
+    const patchedEvent = await requestGoogleMeetConference(calendar, String(data.id));
+    if (patchedEvent) {
+      meetingUrl = extractGoogleMeetingUrl(patchedEvent) || meetingUrl;
+      htmlLink = patchedEvent.htmlLink || htmlLink;
+    }
+
+    if (!meetingUrl) {
+      const refreshedAfterPatch = await fetchGoogleCalendarEvent(calendar, String(data.id));
+      if (refreshedAfterPatch) {
+        meetingUrl = extractGoogleMeetingUrl(refreshedAfterPatch) || meetingUrl;
+        htmlLink = refreshedAfterPatch.htmlLink || htmlLink;
+      }
     }
   }
 
