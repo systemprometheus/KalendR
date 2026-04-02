@@ -836,6 +836,10 @@ export async function createGoogleCalendarEventForBooking(params: {
     },
     attendees: [
       {
+        email: host.email,
+        displayName: host.name,
+      },
+      {
         email: booking.inviteeEmail,
         displayName: booking.inviteeName,
       },
