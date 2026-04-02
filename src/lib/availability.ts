@@ -1,6 +1,6 @@
 import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts, connectedCalendars, users } from './db';
 import { addMinutes, startOfDay, endOfDay, format, parse, isAfter, isBefore, addDays, eachDayOfInterval, setHours, setMinutes } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { ensureDefaultAvailabilitySchedule } from './default-availability';
 
 export interface TimeSlot {
@@ -11,6 +11,14 @@ export interface TimeSlot {
 export interface AvailableSlot {
   time: string; // ISO string
   endTime: string; // ISO string
+}
+
+function zonedDateTimeToUtc(dateStr: string, timeStr: string, timezone: string): Date {
+  return fromZonedTime(`${dateStr}T${timeStr}:00`, timezone);
+}
+
+function getDateInTimezone(date: Date, timezone: string): string {
+  return formatInTimeZone(date, timezone, 'yyyy-MM-dd');
 }
 
 function resolveScheduleForEventType(et: any) {
@@ -80,13 +88,13 @@ export function generateTimeSlots(
   if (windows.length === 0) return [];
 
   // Get existing bookings for the host on this date
-  const dayStart = dateStr + 'T00:00:00.000Z';
-  const dayEnd = dateStr + 'T23:59:59.999Z';
+  const dayStart = zonedDateTimeToUtc(dateStr, '00:00', hostTimezone).toISOString();
+  const dayEnd = zonedDateTimeToUtc(dateStr, '23:59', hostTimezone).toISOString();
 
   const existingBookings = bookings().findMany({
     where: { hostId: et.userId, status: 'confirmed' },
   }).filter(b => {
-    const bookingDate = b.startTime.substring(0, 10);
+    const bookingDate = getDateInTimezone(new Date(b.startTime), hostTimezone);
     return bookingDate === dateStr;
   });
 
@@ -94,7 +102,7 @@ export function generateTimeSlots(
   if (et.dailyLimit) {
     const todayBookings = bookings().findMany({
       where: { eventTypeId, status: 'confirmed' },
-    }).filter(b => b.startTime.substring(0, 10) === dateStr);
+    }).filter(b => getDateInTimezone(new Date(b.startTime), hostTimezone) === dateStr);
     if (todayBookings.length >= et.dailyLimit) return [];
   }
 
@@ -104,13 +112,9 @@ export function generateTimeSlots(
   const slots: AvailableSlot[] = [];
 
   for (const window of windows) {
-    // Parse window times in host timezone
-    const [startH, startM] = window.startTime.split(':').map(Number);
-    const [endH, endM] = window.endTime.split(':').map(Number);
-
-    // Create date objects in host timezone
-    let slotStart = new Date(`${dateStr}T${window.startTime}:00`);
-    const windowEnd = new Date(`${dateStr}T${window.endTime}:00`);
+    // Convert the host's local working hours into absolute UTC instants.
+    let slotStart = zonedDateTimeToUtc(dateStr, window.startTime, hostTimezone);
+    const windowEnd = zonedDateTimeToUtc(dateStr, window.endTime, hostTimezone);
 
     while (slotStart < windowEnd) {
       const slotEnd = addMinutes(slotStart, duration);
