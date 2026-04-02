@@ -2,16 +2,25 @@ function AssetBrandIcon({
   alt,
   src,
   className = 'w-6 h-6',
+  padded = false,
 }: {
   alt: string;
   src: string;
   className?: string;
+  padded?: boolean;
 }) {
-  return <img alt={alt} src={src} className={`${className} object-contain`} draggable={false} />;
+  return (
+    <img
+      alt={alt}
+      src={src}
+      className={`${className} ${padded ? 'p-0.5' : ''} object-contain`}
+      draggable={false}
+    />
+  );
 }
 
 export function GoogleCalendarIcon({ className = 'w-6 h-6' }: { className?: string }) {
-  return <AssetBrandIcon alt="Google Calendar" src="/integrations/google-calendar.svg" className={className} />;
+  return <AssetBrandIcon alt="Google Calendar" src="/integrations/google-calendar.png" className={className} />;
 }
 
 export function MicrosoftOutlookIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -19,7 +28,7 @@ export function MicrosoftOutlookIcon({ className = 'w-6 h-6' }: { className?: st
 }
 
 export function ZoomIcon({ className = 'w-6 h-6' }: { className?: string }) {
-  return <AssetBrandIcon alt="Zoom" src="/integrations/zoom.ico" className={className} />;
+  return <AssetBrandIcon alt="Zoom" src="/integrations/zoom.ico" className={className} padded />;
 }
 
 export function GoogleMeetIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -31,7 +40,7 @@ export function StripeIcon({ className = 'w-6 h-6' }: { className?: string }) {
 }
 
 export function SalesforceIcon({ className = 'w-6 h-6' }: { className?: string }) {
-  return <AssetBrandIcon alt="Salesforce" src="/integrations/salesforce.ico" className={className} />;
+  return <AssetBrandIcon alt="Salesforce" src="/integrations/salesforce.png" className={className} />;
 }
 
 export function HubSpotIcon({ className = 'w-6 h-6' }: { className?: string }) {

@@ -62,6 +62,14 @@ export default function IntegrationsPage() {
   }, []);
 
   const handleConnect = async (provider: string) => {
+    if (provider === 'google_meet' && connectedCalendars.some(c => c.provider === 'google' && c.addEventsTo)) {
+      setToast({
+        type: 'success',
+        message: 'Google Meet is already available through your Google Calendar booking calendar.',
+      });
+      return;
+    }
+
     setConnecting(provider);
     try {
       // Calendar providers use the calendars endpoint, others use the connect endpoint
@@ -95,6 +103,9 @@ export default function IntegrationsPage() {
   };
 
   const isConnected = (provider: string) => {
+    if (provider === 'google_meet') {
+      return connectedCalendars.some(c => c.provider === 'google' && c.addEventsTo);
+    }
     // Check calendars for google/microsoft
     if (connectedCalendars.some(c => c.provider === provider)) return true;
     // Check general integrations for others
@@ -140,10 +151,16 @@ export default function IntegrationsPage() {
               <div key={cal.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                 <CheckCircle className="w-5 h-5 text-green-500" />
                 <div className="flex-1">
-                  <p className="font-medium text-gray-900">{cal.email}</p>
-                  <p className="text-sm text-gray-500 capitalize">{cal.provider}</p>
+                  <p className="font-medium text-gray-900">{cal.calendarName || cal.email}</p>
+                  <p className="text-sm text-gray-500 capitalize">
+                    {cal.accountEmail || cal.email}
+                    {cal.accessRole ? ` • ${cal.accessRole}` : ''}
+                  </p>
                 </div>
-                <Badge variant="success">Connected</Badge>
+                <div className="flex items-center gap-2">
+                  {cal.addEventsTo ? <Badge>Booking calendar</Badge> : null}
+                  <Badge variant="success">Connected</Badge>
+                </div>
               </div>
             ))}
           </div>
@@ -160,30 +177,34 @@ export default function IntegrationsPage() {
               const IconComponent = integration.Icon;
               return (
                 <Card key={integration.id} className="hover:border-gray-300 transition-colors">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
-                      <IconComponent className="w-6 h-6" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900">{integration.name}</h3>
-                        {connected && <Badge variant="success">Connected</Badge>}
+                  <div className="flex h-full flex-col gap-5">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gray-50 ring-1 ring-gray-100">
+                        <IconComponent className="h-10 w-10" />
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">{integration.description}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-medium text-gray-900">{integration.name}</h3>
+                          {connected && <Badge variant="success">Connected</Badge>}
+                        </div>
+                        <p className="mt-2 max-w-[32rem] text-sm leading-7 text-gray-500">{integration.description}</p>
+                      </div>
                     </div>
-                    <Button
-                      variant={connected ? 'outline' : 'primary'}
-                      size="sm"
-                      onClick={() => handleConnect(integration.provider)}
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <span className="flex items-center gap-1">
-                          <span className="animate-spin-slow w-3 h-3 border border-current border-t-transparent rounded-full" />
-                          Connecting...
-                        </span>
-                      ) : connected ? 'Manage' : 'Connect'}
-                    </Button>
+                    <div className="flex justify-start sm:justify-end">
+                      <Button
+                        variant={connected ? 'outline' : 'primary'}
+                        size="sm"
+                        onClick={() => handleConnect(integration.provider)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center gap-1">
+                            <span className="animate-spin-slow w-3 h-3 border border-current border-t-transparent rounded-full" />
+                            Connecting...
+                          </span>
+                        ) : connected ? 'Manage' : 'Connect'}
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               );
