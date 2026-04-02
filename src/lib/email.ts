@@ -1,5 +1,5 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'kalendr.io <onboarding@resend.dev>';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'kalendrio <onboarding@resend.dev>';
 
 interface EmailOptions {
   to: string;
@@ -7,11 +7,6 @@ interface EmailOptions {
   html: string;
   text?: string;
   replyTo?: string;
-  attachments?: Array<{
-    filename: string;
-    content: string;
-    contentType?: string;
-  }>;
 }
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
@@ -35,7 +30,6 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
         html: options.html,
         text: options.text,
         reply_to: options.replyTo,
-        attachments: options.attachments,
       }),
     });
 
@@ -79,8 +73,8 @@ export function bookingConfirmationEmail(data: {
           <p style="margin: 0 0 16px; color: #374151;">Hi ${data.inviteeName},</p>
           <p style="margin: 0 0 24px; color: #374151;">Your meeting has been scheduled.</p>
 
-          <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-            <h2 style="margin: 0 0 12px; font-size: 18px; color: #111827;">${data.eventTitle}</h2>
+	          <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+	            <h2 style="margin: 0 0 12px; font-size: 18px; color: #111827;">${data.eventTitle}</h2>
             <p style="margin: 0 0 8px; color: #6b7280;">
               <strong>When:</strong> ${data.dateTime} (${data.timezone})
             </p>
@@ -90,10 +84,10 @@ export function bookingConfirmationEmail(data: {
             <p style="margin: 0 0 8px; color: #6b7280;">
               <strong>With:</strong> ${data.hostName}
             </p>
-            <p style="margin: 0; color: #6b7280;">
-              <strong>Where:</strong> ${data.location}
-            </p>
-          </div>
+	            <p style="margin: 0; color: #6b7280;">
+	              <strong>Where:</strong> ${data.location}
+	            </p>
+	          </div>
 
           ${data.meetingUrl ? `
             <div style="text-align: center; margin: 0 0 24px;">
@@ -106,18 +100,18 @@ export function bookingConfirmationEmail(data: {
               Calendar invite: <a href="${data.calendarInviteUrl}" style="color: #03b2d1; text-decoration: none;">Open in Google Calendar</a>
             </p>
           ` : ''}
-
-          <div style="text-align: center; margin-top: 24px;">
+	
+	          <div style="text-align: center; margin-top: 24px;">
             <a href="${data.rescheduleUrl}" style="display: inline-block; margin-right: 12px; padding: 10px 20px; background: #f3f4f6; color: #374151; text-decoration: none; border-radius: 6px; font-size: 14px;">Reschedule</a>
             <a href="${data.cancelUrl}" style="display: inline-block; padding: 10px 20px; background: #fee2e2; color: #dc2626; text-decoration: none; border-radius: 6px; font-size: 14px;">Cancel</a>
           </div>
         </div>
-        <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">
-          Powered by kalendr.io
-        </div>
-      </div>
-    `,
-    text: `Meeting Confirmed: ${data.eventTitle} with ${data.hostName}\n\nWhen: ${data.dateTime} (${data.timezone})\nDuration: ${data.duration} minutes\nWhere: ${data.location}${data.meetingUrl ? `\nJoin meeting: ${data.meetingUrl}` : ''}${data.calendarInviteUrl ? `\nCalendar invite: ${data.calendarInviteUrl}` : ''}\n\nReschedule: ${data.rescheduleUrl}\nCancel: ${data.cancelUrl}`,
+	        <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">
+	          Powered by kalendrio
+	        </div>
+	      </div>
+	    `,
+	    text: `Meeting Confirmed: ${data.eventTitle} with ${data.hostName}\n\nWhen: ${data.dateTime} (${data.timezone})\nDuration: ${data.duration} minutes\nWhere: ${data.location}${data.meetingUrl ? `\nJoin meeting: ${data.meetingUrl}` : ''}${data.calendarInviteUrl ? `\nCalendar invite: ${data.calendarInviteUrl}` : ''}\n\nReschedule: ${data.rescheduleUrl}\nCancel: ${data.cancelUrl}`,
   };
 }
 
@@ -145,13 +139,13 @@ export function hostNotificationEmail(data: {
           <p style="margin: 0 0 16px; color: #374151;">Hi ${data.hostName},</p>
           <p style="margin: 0 0 24px; color: #374151;">A new meeting has been booked with you.</p>
 
-          <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
-            <h2 style="margin: 0 0 12px; font-size: 18px; color: #111827;">${data.eventTitle}</h2>
-            <p style="margin: 0 0 8px; color: #6b7280;"><strong>When:</strong> ${data.dateTime} (${data.timezone})</p>
-            <p style="margin: 0 0 8px; color: #6b7280;"><strong>Duration:</strong> ${data.duration} minutes</p>
-            <p style="margin: 0 0 8px; color: #6b7280;"><strong>Invitee:</strong> ${data.inviteeName} (${data.inviteeEmail})</p>
-            <p style="margin: 0; color: #6b7280;"><strong>Where:</strong> ${data.location}</p>
-          </div>
+	          <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+	            <h2 style="margin: 0 0 12px; font-size: 18px; color: #111827;">${data.eventTitle}</h2>
+	            <p style="margin: 0 0 8px; color: #6b7280;"><strong>When:</strong> ${data.dateTime} (${data.timezone})</p>
+	            <p style="margin: 0 0 8px; color: #6b7280;"><strong>Duration:</strong> ${data.duration} minutes</p>
+	            <p style="margin: 0 0 8px; color: #6b7280;"><strong>Invitee:</strong> ${data.inviteeName} (${data.inviteeEmail})</p>
+	            <p style="margin: 0; color: #6b7280;"><strong>Where:</strong> ${data.location}</p>
+	          </div>
 
           ${data.meetingUrl ? `
             <div style="text-align: center; margin: 0 0 24px;">
@@ -164,11 +158,11 @@ export function hostNotificationEmail(data: {
               Calendar invite: <a href="${data.calendarInviteUrl}" style="color: #03b2d1; text-decoration: none;">Open in Google Calendar</a>
             </p>
           ` : ''}
-        </div>
-        <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">Powered by kalendr.io</div>
-      </div>
-    `,
-    text: `New booking: ${data.eventTitle}\n\nInvitee: ${data.inviteeName} (${data.inviteeEmail})\nWhen: ${data.dateTime} (${data.timezone})\nDuration: ${data.duration} minutes\nWhere: ${data.location}${data.meetingUrl ? `\nMeeting link: ${data.meetingUrl}` : ''}${data.calendarInviteUrl ? `\nCalendar invite: ${data.calendarInviteUrl}` : ''}`,
+	        </div>
+	        <div style="padding: 16px; text-align: center; color: #9ca3af; font-size: 12px;">Powered by kalendrio</div>
+	      </div>
+	    `,
+	    text: `New booking: ${data.eventTitle}\n\nInvitee: ${data.inviteeName} (${data.inviteeEmail})\nWhen: ${data.dateTime} (${data.timezone})\nDuration: ${data.duration} minutes\nWhere: ${data.location}${data.meetingUrl ? `\nMeeting link: ${data.meetingUrl}` : ''}${data.calendarInviteUrl ? `\nCalendar invite: ${data.calendarInviteUrl}` : ''}`,
   };
 }
 

@@ -52,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
 
     // If requesting available dates for a month
     if (month !== null && year) {
-      response.availableDates = getAvailableDates(
+      response.availableDates = await getAvailableDates(
         et.id,
         parseInt(month),
         parseInt(year),
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
 
     // If requesting time slots for a specific date
     if (date) {
-      response.timeSlots = generateTimeSlots(et.id, date, timezone);
+      response.timeSlots = await generateTimeSlots(et.id, date, timezone);
     }
 
     return NextResponse.json(response);

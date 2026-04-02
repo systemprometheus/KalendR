@@ -1,7 +1,7 @@
-import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts, connectedCalendars, users } from './db';
+import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts } from './db';
 import { addMinutes, startOfDay, endOfDay, format, parse, isAfter, isBefore, addDays, eachDayOfInterval, setHours, setMinutes } from 'date-fns';
-import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
-import { ensureDefaultAvailabilitySchedule } from './default-availability';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { getGoogleCalendarBusyIntervals, hasBusyIntervalConflict, hasGoogleCalendarConflict, type BusyInterval } from './google-calendar';
 
 export interface TimeSlot {
   start: Date;
@@ -11,29 +11,6 @@ export interface TimeSlot {
 export interface AvailableSlot {
   time: string; // ISO string
   endTime: string; // ISO string
-}
-
-function zonedDateTimeToUtc(dateStr: string, timeStr: string, timezone: string): Date {
-  return fromZonedTime(`${dateStr}T${timeStr}:00`, timezone);
-}
-
-function getDateInTimezone(date: Date, timezone: string): string {
-  return formatInTimeZone(date, timezone, 'yyyy-MM-dd');
-}
-
-function resolveScheduleForEventType(et: any) {
-  if (et.availabilityScheduleId) {
-    const assignedSchedule = availabilitySchedules().findById(et.availabilityScheduleId);
-    if (assignedSchedule) return assignedSchedule;
-  }
-
-  const existingSchedule = availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } })
-    || availabilitySchedules().findFirst({ where: { userId: et.userId } });
-
-  if (existingSchedule) return existingSchedule;
-
-  const user = users().findById(et.userId);
-  return ensureDefaultAvailabilitySchedule(et.userId, user?.timezone || 'America/New_York');
 }
 
 export function getAvailabilityForDate(
@@ -64,15 +41,18 @@ export function getAvailabilityForDate(
   return rules.map(r => ({ startTime: r.startTime, endTime: r.endTime }));
 }
 
-export function generateTimeSlots(
+export async function generateTimeSlots(
   eventTypeId: string,
   dateStr: string, // YYYY-MM-DD
   inviteeTimezone: string,
-): AvailableSlot[] {
+  preloadedBusyIntervals?: BusyInterval[],
+): Promise<AvailableSlot[]> {
   const et = eventTypes().findById(eventTypeId);
   if (!et || !et.isActive) return [];
 
-  const schedule = resolveScheduleForEventType(et);
+  const schedule = et.availabilityScheduleId
+    ? availabilitySchedules().findById(et.availabilityScheduleId)
+    : availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } });
 
   if (!schedule) return [];
 
@@ -88,21 +68,29 @@ export function generateTimeSlots(
   if (windows.length === 0) return [];
 
   // Get existing bookings for the host on this date
-  const dayStart = zonedDateTimeToUtc(dateStr, '00:00', hostTimezone).toISOString();
-  const dayEnd = zonedDateTimeToUtc(dateStr, '23:59', hostTimezone).toISOString();
+  const dayStart = dateStr + 'T00:00:00.000Z';
+  const dayEnd = dateStr + 'T23:59:59.999Z';
 
   const existingBookings = bookings().findMany({
     where: { hostId: et.userId, status: 'confirmed' },
   }).filter(b => {
-    const bookingDate = getDateInTimezone(new Date(b.startTime), hostTimezone);
+    const bookingDate = b.startTime.substring(0, 10);
     return bookingDate === dateStr;
   });
+
+  const googleBusyIntervals = et.userId
+    ? (preloadedBusyIntervals || await getGoogleCalendarBusyIntervals(
+      et.userId,
+      dayStart,
+      dayEnd,
+    ))
+    : [];
 
   // Check daily limit
   if (et.dailyLimit) {
     const todayBookings = bookings().findMany({
       where: { eventTypeId, status: 'confirmed' },
-    }).filter(b => getDateInTimezone(new Date(b.startTime), hostTimezone) === dateStr);
+    }).filter(b => b.startTime.substring(0, 10) === dateStr);
     if (todayBookings.length >= et.dailyLimit) return [];
   }
 
@@ -112,9 +100,13 @@ export function generateTimeSlots(
   const slots: AvailableSlot[] = [];
 
   for (const window of windows) {
-    // Convert the host's local working hours into absolute UTC instants.
-    let slotStart = zonedDateTimeToUtc(dateStr, window.startTime, hostTimezone);
-    const windowEnd = zonedDateTimeToUtc(dateStr, window.endTime, hostTimezone);
+    // Parse window times in host timezone
+    const [startH, startM] = window.startTime.split(':').map(Number);
+    const [endH, endM] = window.endTime.split(':').map(Number);
+
+    // Create date objects in host timezone
+    let slotStart = new Date(`${dateStr}T${window.startTime}:00`);
+    const windowEnd = new Date(`${dateStr}T${window.endTime}:00`);
 
     while (slotStart < windowEnd) {
       const slotEnd = addMinutes(slotStart, duration);
@@ -141,7 +133,7 @@ export function generateTimeSlots(
         const bStart = new Date(booking.startTime);
         const bEnd = new Date(booking.endTime);
         return slotWithBufferStart < bEnd && slotWithBufferEnd > bStart;
-      });
+      }) || hasBusyIntervalConflict(googleBusyIntervals, slotWithBufferStart, slotWithBufferEnd);
 
       if (!hasConflict) {
         slots.push({
@@ -157,24 +149,30 @@ export function generateTimeSlots(
   return slots;
 }
 
-export function getAvailableDates(
+export async function getAvailableDates(
   eventTypeId: string,
   month: number, // 0-indexed
   year: number,
   timezone: string,
-): string[] {
+): Promise<string[]> {
   const et = eventTypes().findById(eventTypeId);
   if (!et) return [];
 
-  const schedule = resolveScheduleForEventType(et);
+  const schedule = et.availabilityScheduleId
+    ? availabilitySchedules().findById(et.availabilityScheduleId)
+    : availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } });
 
   if (!schedule) return [];
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const availableDates: string[] = [];
   const now = new Date();
-  const minNotice = et.minNotice || 0;
   const maxFutureDays = et.maxFutureDays || 60;
+  const monthStart = new Date(Date.UTC(year, month, 1, 0, 0, 0, 0)).toISOString();
+  const monthEnd = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999)).toISOString();
+  const monthlyBusyIntervals = et.userId
+    ? await getGoogleCalendarBusyIntervals(et.userId, monthStart, monthEnd)
+    : [];
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -188,7 +186,7 @@ export function getAvailableDates(
 
     // Check if there's any availability on this day
     const windows = getAvailabilityForDate(schedule.id, dateStr);
-    if (windows.length > 0) {
+    if (windows.length > 0 && (await generateTimeSlots(et.id, dateStr, timezone, monthlyBusyIntervals)).length > 0) {
       availableDates.push(dateStr);
     }
   }
@@ -232,11 +230,11 @@ export function selectRoundRobinHost(eventTypeId: string): string | null {
 }
 
 // Check if all required hosts are available (collective events)
-export function checkCollectiveAvailability(
+export async function checkCollectiveAvailability(
   eventTypeId: string,
   startTime: Date,
   endTime: Date,
-): boolean {
+): Promise<boolean> {
   const hosts = eventTypeHosts().findMany({
     where: { eventTypeId, isRequired: true },
   });
@@ -251,6 +249,7 @@ export function checkCollectiveAvailability(
     });
 
     if (conflicts.length > 0) return false;
+    if (await hasGoogleCalendarConflict(host.userId, startTime, endTime)) return false;
   }
 
   return true;

@@ -187,6 +187,14 @@ export interface ConnectedCalendar {
   checkForConflicts: boolean;
   addEventsTo: boolean;
   isPrimary: boolean;
+  watchChannelId?: string;
+  watchResourceId?: string;
+  watchResourceUri?: string;
+  watchExpiration?: string;
+  watchToken?: string;
+  watchCursorUpdatedAt?: string;
+  watchLastWebhookAt?: string;
+  watchLastMessageNumber?: number;
   createdAt: string;
   updatedAt: string;
 }
