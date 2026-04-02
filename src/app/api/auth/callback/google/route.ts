@@ -7,6 +7,7 @@ import { ensureUserWorkspace } from '@/lib/default-user-setup';
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const error = req.nextUrl.searchParams.get('error');
+  const intent = req.nextUrl.searchParams.get('state') === 'signup' ? 'signup' : 'login';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
 
   if (error || !code) {
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest) {
 
     // Find or create user
     let user = users().findFirst({ where: { email: normalizedEmail } });
+    const isNewUser = !user;
 
     if (!user) {
       // Create new user
@@ -87,8 +89,7 @@ export async function GET(req: NextRequest) {
       path: '/',
     });
 
-    // Redirect based on onboarding status
-    if (!user.onboardingComplete) {
+    if (intent === 'signup' && (isNewUser || !user.onboardingComplete)) {
       return NextResponse.redirect(new URL('/onboarding', appUrl));
     }
 

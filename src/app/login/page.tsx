@@ -40,11 +40,7 @@ function LoginContent() {
         return;
       }
 
-      if (!data.user.onboardingComplete) {
-        router.push('/onboarding');
-      } else {
-        router.push('/dashboard');
-      }
+      router.push('/dashboard');
     } catch (err) {
       setError('Something went wrong. Please try again.');
     } finally {
@@ -53,7 +49,7 @@ function LoginContent() {
   };
 
   const handleOAuth = (provider: string) => {
-    window.location.href = `/api/auth/${provider}`;
+    window.location.href = `/api/auth/${provider}?intent=login`;
   };
 
   return (

@@ -7,6 +7,7 @@ import { ensureUserWorkspace } from '@/lib/default-user-setup';
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const error = req.nextUrl.searchParams.get('error');
+  const intent = req.nextUrl.searchParams.get('state') === 'signup' ? 'signup' : 'login';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
   const tenantId = process.env.MICROSOFT_TENANT_ID || 'common';
 
@@ -52,6 +53,7 @@ export async function GET(req: NextRequest) {
 
     // Find or create user
     let user = users().findFirst({ where: { email: normalizedEmail } });
+    const isNewUser = !user;
 
     if (!user) {
       const name = msUser.displayName || normalizedEmail.split('@')[0];
@@ -84,7 +86,7 @@ export async function GET(req: NextRequest) {
       path: '/',
     });
 
-    if (!user.onboardingComplete) {
+    if (intent === 'signup' && (isNewUser || !user.onboardingComplete)) {
       return NextResponse.redirect(new URL('/onboarding', appUrl));
     }
 

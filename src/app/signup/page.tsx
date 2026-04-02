@@ -44,7 +44,7 @@ export default function SignupPage() {
   };
 
   const handleOAuth = (provider: string) => {
-    window.location.href = `/api/auth/${provider}`;
+    window.location.href = `/api/auth/${provider}?intent=signup`;
   };
 
   return (
