@@ -19,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.2",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "autoprefixer": "^10.4.27",
@@ -41,7 +42,6 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.10",
     "@types/uuid": "^10.0.0",
     "tsx": "^4.7.0"
   }
