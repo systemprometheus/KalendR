@@ -2,6 +2,7 @@
 import { useState, useEffect, use } from 'react';
 import { Calendar, Clock, Globe, Video, Phone, MapPin, ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, startOfWeek, endOfWeek, addMinutes } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import { TIMEZONES, findMatchingTimezone, formatTimezoneLabel } from '@/lib/timezones';
 
 interface PageProps {
@@ -36,6 +37,12 @@ export default function BookingPage({ params }: PageProps) {
   const [customResponses, setCustomResponses] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [bookingResult, setBookingResult] = useState<any>(null);
+
+  const formatSlotTime = (isoString: string) =>
+    formatInTimeZone(new Date(isoString), timezone, 'h:mm a');
+
+  const formatSelectedDate = (dateStr: string, pattern: string) =>
+    formatInTimeZone(new Date(`${dateStr}T12:00:00Z`), timezone, pattern);
 
   // Detect timezone
   useEffect(() => {
@@ -240,8 +247,8 @@ export default function BookingPage({ params }: PageProps) {
             </div>
             <div className="space-y-1 text-sm text-gray-600">
               <p className="flex items-center gap-2"><User className="w-4 h-4 text-gray-400" /> {host?.name}</p>
-              <p className="flex items-center gap-2"><Calendar className="w-4 h-4 text-gray-400" /> {selectedDate && format(new Date(selectedDate + 'T12:00:00'), 'EEEE, MMMM d, yyyy')}</p>
-              <p className="flex items-center gap-2"><Clock className="w-4 h-4 text-gray-400" /> {selectedSlot && format(new Date(selectedSlot.time), 'h:mm a')} - {selectedSlot && format(new Date(selectedSlot.endTime), 'h:mm a')}</p>
+              <p className="flex items-center gap-2"><Calendar className="w-4 h-4 text-gray-400" /> {selectedDate && formatSelectedDate(selectedDate, 'EEEE, MMMM d, yyyy')}</p>
+              <p className="flex items-center gap-2"><Clock className="w-4 h-4 text-gray-400" /> {selectedSlot && formatSlotTime(selectedSlot.time)} - {selectedSlot && formatSlotTime(selectedSlot.endTime)}</p>
               <p className="flex items-center gap-2">{locationIcon(eventType?.locationType)} {locationLabel(eventType?.locationType)}</p>
               <p className="flex items-center gap-2"><Globe className="w-4 h-4 text-gray-400" /> {timezone}</p>
             </div>
@@ -291,13 +298,13 @@ export default function BookingPage({ params }: PageProps) {
               {selectedDate && (
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-gray-400" />
-                  <span>{format(new Date(selectedDate + 'T12:00:00'), 'EEEE, MMMM d, yyyy')}</span>
+                  <span>{formatSelectedDate(selectedDate, 'EEEE, MMMM d, yyyy')}</span>
                 </div>
               )}
               {selectedSlot && (
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-gray-400" />
-                  <span>{format(new Date(selectedSlot.time), 'h:mm a')} - {format(new Date(selectedSlot.endTime), 'h:mm a')}</span>
+                  <span>{formatSlotTime(selectedSlot.time)} - {formatSlotTime(selectedSlot.endTime)}</span>
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -327,7 +334,7 @@ export default function BookingPage({ params }: PageProps) {
             {step === 'time' && (
               <div className="animate-fade-in">
                 <h2 className="font-semibold text-gray-900 mb-4">
-                  {selectedDate && format(new Date(selectedDate + 'T12:00:00'), 'EEEE, MMMM d')}
+                  {selectedDate && formatSelectedDate(selectedDate, 'EEEE, MMMM d')}
                 </h2>
 
                 {loadingSlots ? (
@@ -348,7 +355,7 @@ export default function BookingPage({ params }: PageProps) {
                             : 'border-gray-200 text-gray-700 hover:border-[#03b2d1] hover:text-[#03b2d1]'
                         }`}
                       >
-                        {format(new Date(slot.time), 'h:mm a')}
+                        {formatSlotTime(slot.time)}
                       </button>
                     ))}
                   </div>
