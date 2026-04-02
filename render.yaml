@@ -5,7 +5,7 @@ services:
     plan: starter
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
-    healthCheckPath: /api/auth/me
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
