@@ -15,15 +15,31 @@ export interface AvailableSlot {
 }
 
 function resolveScheduleForEventType(et: any) {
-  if (et.availabilityScheduleId) {
-    const assignedSchedule = availabilitySchedules().findById(et.availabilityScheduleId);
-    if (assignedSchedule) return assignedSchedule;
-  }
+  const schedules = availabilitySchedules().findMany({
+    where: { userId: et.userId },
+    orderBy: { updatedAt: 'desc' },
+  });
 
-  const existingSchedule = availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } })
-    || availabilitySchedules().findFirst({ where: { userId: et.userId } });
+  const schedulesWithRules = schedules.map(schedule => ({
+    schedule,
+    enabledRuleCount: availabilityRules().count({
+      scheduleId: schedule.id,
+      isEnabled: true,
+    }),
+  }));
 
-  if (existingSchedule) return existingSchedule;
+  const assignedSchedule = et.availabilityScheduleId
+    ? schedulesWithRules.find(({ schedule }) => schedule.id === et.availabilityScheduleId)
+    : null;
+
+  const preferredSchedule = schedulesWithRules.find(({ schedule, enabledRuleCount }) => schedule.isDefault && enabledRuleCount > 0)
+    || (assignedSchedule && assignedSchedule.enabledRuleCount > 0 ? assignedSchedule : null)
+    || schedulesWithRules.find(({ enabledRuleCount }) => enabledRuleCount > 0)
+    || null;
+
+  if (preferredSchedule) return preferredSchedule.schedule;
+  if (assignedSchedule) return assignedSchedule.schedule;
+  if (schedules[0]) return schedules[0];
 
   const user = users().findById(et.userId);
   return ensureDefaultAvailabilitySchedule(et.userId, user?.timezone || 'America/New_York');
