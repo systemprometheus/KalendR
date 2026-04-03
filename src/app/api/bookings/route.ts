@@ -33,6 +33,32 @@ function toIcsDateTime(value: string | Date) {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }
 
+function foldIcsLine(line: string) {
+  const segments: string[] = [];
+  let remaining = line;
+  let isFirstLine = true;
+
+  while (Buffer.byteLength(remaining, 'utf-8') > (isFirstLine ? 75 : 74)) {
+    const maxBytes = isFirstLine ? 75 : 74;
+    let splitIndex = remaining.length;
+
+    while (splitIndex > 1 && Buffer.byteLength(remaining.slice(0, splitIndex), 'utf-8') > maxBytes) {
+      splitIndex -= 1;
+    }
+
+    const chunk = remaining.slice(0, splitIndex);
+    segments.push(isFirstLine ? chunk : ` ${chunk}`);
+    remaining = remaining.slice(splitIndex);
+    isFirstLine = false;
+  }
+
+  if (remaining) {
+    segments.push(isFirstLine ? remaining : ` ${remaining}`);
+  }
+
+  return segments.join('\r\n');
+}
+
 function buildBookingIcsInvite(params: {
   bookingUid: string;
   eventTitle: string;
@@ -45,6 +71,7 @@ function buildBookingIcsInvite(params: {
   description: string;
   location: string;
   meetingUrl?: string | null;
+  calendarInviteUrl?: string | null;
   appUrl: string;
 }) {
   const {
@@ -59,34 +86,48 @@ function buildBookingIcsInvite(params: {
     description,
     location,
     meetingUrl,
+    calendarInviteUrl,
     appUrl,
   } = params;
 
+  const descriptionLines = [description];
+  if (meetingUrl) {
+    descriptionLines.push('', `Join meeting: ${meetingUrl}`);
+  } else if (calendarInviteUrl) {
+    descriptionLines.push('', `Open in Google Calendar: ${calendarInviteUrl}`);
+  }
+  descriptionLines.push('', `Manage booking: ${appUrl}/booking/${bookingUid}`);
+  const enrichedDescription = descriptionLines.join('\n');
+  const now = new Date();
+
   const lines = [
     'BEGIN:VCALENDAR',
-    'PRODID:-//Kalendrio//Booking//EN',
+    'PRODID:-//KalendR//Booking//EN',
     'VERSION:2.0',
     'CALSCALE:GREGORIAN',
     'METHOD:REQUEST',
     'BEGIN:VEVENT',
     `UID:${escapeIcsText(`${bookingUid}@kalendrio`)}`,
-    `DTSTAMP:${toIcsDateTime(new Date())}`,
+    `DTSTAMP:${toIcsDateTime(now)}`,
+    `CREATED:${toIcsDateTime(now)}`,
+    `LAST-MODIFIED:${toIcsDateTime(now)}`,
     `DTSTART:${toIcsDateTime(startTime)}`,
     `DTEND:${toIcsDateTime(endTime)}`,
     `SUMMARY:${escapeIcsText(eventTitle)}`,
-    `DESCRIPTION:${escapeIcsText(description)}`,
+    `DESCRIPTION:${escapeIcsText(enrichedDescription)}`,
     `ORGANIZER;CN=${escapeIcsText(hostName)}:MAILTO:${hostEmail}`,
-    `ATTENDEE;CN=${escapeIcsText(inviteeName)};RSVP=TRUE:MAILTO:${inviteeEmail}`,
-    `ATTENDEE;CN=${escapeIcsText(hostName)};RSVP=TRUE:MAILTO:${hostEmail}`,
+    `ATTENDEE;CN=${escapeIcsText(inviteeName)};CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE:MAILTO:${inviteeEmail}`,
+    `ATTENDEE;CN=${escapeIcsText(hostName)};CUTYPE=INDIVIDUAL;ROLE=CHAIR;PARTSTAT=ACCEPTED:MAILTO:${hostEmail}`,
     `LOCATION:${escapeIcsText(location)}`,
     `URL:${escapeIcsText(meetingUrl || `${appUrl}/booking/${bookingUid}`)}`,
     'STATUS:CONFIRMED',
+    'TRANSP:OPAQUE',
     'SEQUENCE:0',
     'END:VEVENT',
     'END:VCALENDAR',
   ];
 
-  return lines.join('\r\n');
+  return lines.map(foldIcsLine).join('\r\n');
 }
 
 function normalizeHttpUrl(value?: string | null) {
@@ -281,9 +322,11 @@ export async function POST(req: NextRequest) {
         || (bookingRecord.locationType === 'google_meet'
           ? normalizeHttpUrl(googleCalendarInviteUrl)
           : null);
-      const emailLocation = fallbackMeetingUrl
-        || bookingRecord.locationValue
-        || locationType;
+      const emailLocation = bookingRecord.locationType === 'google_meet'
+        ? 'Google Meet'
+        : (fallbackMeetingUrl
+          || bookingRecord.locationValue
+          || locationType);
       const icsInvite = buildBookingIcsInvite({
         bookingUid: bookingRecord.uid,
         eventTitle: et.title,
@@ -296,6 +339,7 @@ export async function POST(req: NextRequest) {
         description: `Meeting booked via Kalendrio with ${host.name}.`,
         location: emailLocation,
         meetingUrl: fallbackMeetingUrl,
+        calendarInviteUrl: googleCalendarInviteUrl,
         appUrl,
       });
       const calendarInviteAttachment = {
@@ -318,7 +362,7 @@ export async function POST(req: NextRequest) {
       });
       confirmEmail.to = inviteeEmail;
       confirmEmail.attachments = [calendarInviteAttachment];
-      sendEmail(confirmEmail);
+      const confirmEmailPromise = sendEmail(confirmEmail);
 
       // Send notification to host
       const hostEmail = hostNotificationEmail({
@@ -335,7 +379,26 @@ export async function POST(req: NextRequest) {
       });
       hostEmail.to = host.email;
       hostEmail.attachments = [calendarInviteAttachment];
-      sendEmail(hostEmail);
+      const hostEmailPromise = sendEmail(hostEmail);
+
+      const [inviteeEmailResult, hostEmailResult] = await Promise.allSettled([
+        confirmEmailPromise,
+        hostEmailPromise,
+      ]);
+
+      if (inviteeEmailResult.status !== 'fulfilled' || !inviteeEmailResult.value) {
+        console.error('Failed to send booking confirmation email', {
+          bookingId: bookingRecord.id,
+          inviteeEmail,
+        });
+      }
+
+      if (hostEmailResult.status !== 'fulfilled' || !hostEmailResult.value) {
+        console.error('Failed to send host booking notification email', {
+          bookingId: bookingRecord.id,
+          hostEmail: host.email,
+        });
+      }
     }
 
     return NextResponse.json({

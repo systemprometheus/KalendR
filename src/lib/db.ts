@@ -207,3 +207,4 @@ export const bookingNotifications = () => db.collection<any>('booking_notificati
 export const routingForms = () => db.collection<any>('routing_forms');
 export const routingFormResponses = () => db.collection<any>('routing_form_responses');
 export const workflowTemplates = () => db.collection<any>('workflow_templates');
+export const integrations = () => db.collection<any>('integrations');

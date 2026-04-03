@@ -1,5 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
-import { bookings, connectedCalendars } from './db';
+import { bookings, connectedCalendars, integrations } from './db';
 import type { Booking, ConnectedCalendar, EventType, User } from './types';
 
 type RawConnectedGoogleCalendar = ConnectedCalendar & {
@@ -79,6 +79,17 @@ type GoogleBookingEventResult = {
   eventId: string;
   htmlLink?: string;
   meetingUrl?: string | null;
+};
+
+type LegacyGoogleMeetIntegration = {
+  id: string;
+  userId: string;
+  provider: string;
+  accessToken?: string;
+  refreshToken?: string;
+  tokenExpiry?: string;
+  email?: string;
+  externalId?: string;
 };
 
 export const GOOGLE_CALENDAR_SCOPES = [
@@ -286,6 +297,182 @@ function shouldRefreshToken(calendar: ConnectedGoogleCalendar) {
   return expiryMs <= Date.now() + 60_000;
 }
 
+function shouldRefreshLegacyGoogleToken(tokenExpiry?: string) {
+  if (!tokenExpiry) return false;
+
+  const expiryMs = new Date(tokenExpiry).getTime();
+  if (!Number.isFinite(expiryMs)) return false;
+
+  return expiryMs <= Date.now() + 60_000;
+}
+
+function getLegacyGoogleMeetIntegration(userId: string) {
+  return integrations().findFirst({
+    where: {
+      userId,
+      provider: 'google_meet',
+    },
+  }) as LegacyGoogleMeetIntegration | null;
+}
+
+async function refreshLegacyGoogleMeetAccessToken(integration: LegacyGoogleMeetIntegration) {
+  if (!integration.refreshToken) {
+    return integration.accessToken || '';
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    return integration.accessToken || '';
+  }
+
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: integration.refreshToken,
+    }),
+  });
+
+  const refreshed = await tokenRes.json();
+  if (!tokenRes.ok || !refreshed.access_token) {
+    console.error('Failed to refresh legacy Google Meet token', {
+      integrationId: integration.id,
+      email: integration.email,
+      status: tokenRes.status,
+      error: refreshed,
+    });
+    return integration.accessToken || '';
+  }
+
+  const updated = integrations().update(integration.id, {
+    accessToken: refreshed.access_token,
+    refreshToken: refreshed.refresh_token || integration.refreshToken,
+    tokenExpiry: refreshed.expires_in
+      ? new Date(Date.now() + refreshed.expires_in * 1000).toISOString()
+      : integration.tokenExpiry || '',
+  }) as LegacyGoogleMeetIntegration | null;
+
+  return updated?.accessToken || refreshed.access_token || '';
+}
+
+async function getValidLegacyGoogleMeetAccessToken(integration: LegacyGoogleMeetIntegration) {
+  if (!integration.accessToken || shouldRefreshLegacyGoogleToken(integration.tokenExpiry)) {
+    return refreshLegacyGoogleMeetAccessToken(integration);
+  }
+
+  return integration.accessToken;
+}
+
+function getRemainingTokenLifetimeSeconds(tokenExpiry?: string) {
+  if (!tokenExpiry) return undefined;
+
+  const expiryMs = new Date(tokenExpiry).getTime();
+  if (!Number.isFinite(expiryMs)) return undefined;
+
+  const remainingSeconds = Math.floor((expiryMs - Date.now()) / 1000);
+  return remainingSeconds > 0 ? remainingSeconds : undefined;
+}
+
+async function getLegacyGoogleMeetIdentity(
+  integration: LegacyGoogleMeetIntegration,
+  accessToken: string,
+) {
+  const email = integration.email?.trim();
+  const externalId = integration.externalId?.trim();
+
+  if (email && externalId) {
+    return { email, externalId };
+  }
+
+  const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to fetch legacy Google Meet identity', {
+      integrationId: integration.id,
+      status: response.status,
+      errorText,
+    });
+    return null;
+  }
+
+  const data = await response.json();
+  const resolvedEmail = String(data?.email || '').trim();
+  const resolvedExternalId = String(data?.id || resolvedEmail).trim();
+
+  if (!resolvedEmail || !resolvedExternalId) {
+    return null;
+  }
+
+  integrations().update(integration.id, {
+    email: resolvedEmail,
+    externalId: resolvedExternalId,
+  });
+
+  return {
+    email: resolvedEmail,
+    externalId: resolvedExternalId,
+  };
+}
+
+export async function recoverGoogleCalendarConnection(userId: string) {
+  const existingCalendar = getGoogleAddToCalendar(userId);
+  if (existingCalendar) {
+    return existingCalendar;
+  }
+
+  const legacyIntegration = getLegacyGoogleMeetIntegration(userId);
+  if (!legacyIntegration) {
+    return null;
+  }
+
+  const accessToken = await getValidLegacyGoogleMeetAccessToken(legacyIntegration);
+  if (!accessToken) {
+    console.warn('Legacy Google Meet integration has no usable access token', {
+      integrationId: legacyIntegration.id,
+      userId,
+    });
+    return null;
+  }
+
+  const identity = await getLegacyGoogleMeetIdentity(legacyIntegration, accessToken);
+  if (!identity) {
+    console.warn('Legacy Google Meet integration is missing account identity', {
+      integrationId: legacyIntegration.id,
+      userId,
+    });
+    return null;
+  }
+
+  try {
+    await syncGoogleCalendarsFromOAuth({
+      userId,
+      accessToken,
+      refreshToken: legacyIntegration.refreshToken || '',
+      expiresIn: getRemainingTokenLifetimeSeconds(legacyIntegration.tokenExpiry),
+      accountEmail: identity.email,
+      accountExternalId: identity.externalId,
+    });
+  } catch (error) {
+    console.error('Failed to recover Google Calendar connection from legacy Google Meet integration', {
+      integrationId: legacyIntegration.id,
+      userId,
+      error,
+    });
+    return null;
+  }
+
+  return getGoogleAddToCalendar(userId);
+}
+
 export function buildGoogleCalendarOAuthUrl(baseUrl: string, clientId: string) {
   const params = new URLSearchParams({
     client_id: clientId,
@@ -300,7 +487,9 @@ export function buildGoogleCalendarOAuthUrl(baseUrl: string, clientId: string) {
 }
 
 export function canWriteGoogleCalendar(calendar: Pick<ConnectedGoogleCalendar, 'accessRole'>) {
-  return ['owner', 'writer'].includes(calendar.accessRole);
+  // Older synced calendar records may not have stored accessRole yet.
+  // Treat those as potentially writable and let the Google API enforce permissions.
+  return !calendar.accessRole || ['owner', 'writer'].includes(calendar.accessRole);
 }
 
 async function refreshGoogleAccessToken(calendar: ConnectedGoogleCalendar) {
@@ -651,7 +840,11 @@ export async function getGoogleCalendarBusyIntervals(
   timeMin: string,
   timeMax: string,
 ): Promise<BusyInterval[]> {
-  const calendars = getAllConnectedGoogleCalendars(userId).filter((calendar) => calendar.checkForConflicts);
+  let calendars = getAllConnectedGoogleCalendars(userId).filter((calendar) => calendar.checkForConflicts);
+  if (calendars.length === 0) {
+    await recoverGoogleCalendarConnection(userId);
+    calendars = getAllConnectedGoogleCalendars(userId).filter((calendar) => calendar.checkForConflicts);
+  }
   if (calendars.length === 0) {
     return [];
   }
@@ -731,9 +924,34 @@ export async function hasGoogleCalendarConflict(
 }
 
 export function getGoogleAddToCalendar(userId: string) {
-  return getAllConnectedGoogleCalendars(userId).find((calendar) => (
-    calendar.addEventsTo && canWriteGoogleCalendar(calendar)
-  )) || null;
+  const calendars = getAllConnectedGoogleCalendars(userId);
+  if (calendars.length === 0) {
+    return null;
+  }
+
+  const writableCalendars = calendars.filter((calendar) => canWriteGoogleCalendar(calendar));
+  const selected = writableCalendars.find((calendar) => calendar.addEventsTo)
+    || writableCalendars.find((calendar) => calendar.isPrimary)
+    || writableCalendars[0]
+    || calendars.find((calendar) => calendar.addEventsTo)
+    || calendars.find((calendar) => calendar.isPrimary)
+    || calendars[0]
+    || null;
+
+  if (!selected) {
+    return null;
+  }
+
+  if (!selected.addEventsTo) {
+    connectedCalendars().updateMany({ userId, provider: 'google' }, { addEventsTo: false });
+    const updated = connectedCalendars().update(selected.id, { addEventsTo: true });
+    return normalizeGoogleCalendar((updated as RawConnectedGoogleCalendar) || {
+      ...selected,
+      addEventsTo: true,
+    });
+  }
+
+  return selected;
 }
 
 function buildGoogleEventDescription(params: {
@@ -867,8 +1085,17 @@ export async function createGoogleCalendarEventForBooking(params: {
     || eventType.locationType === 'google_meet'
     || looksLikeMeet(booking.locationValue)
     || looksLikeMeet(eventType.locationValue);
-  const calendar = getGoogleAddToCalendar(booking.hostId);
+  let calendar = getGoogleAddToCalendar(booking.hostId);
   if (!calendar) {
+    calendar = await recoverGoogleCalendarConnection(booking.hostId);
+  }
+  if (!calendar) {
+    console.warn('No Google booking calendar available for booking', {
+      bookingId: booking.id,
+      hostId: booking.hostId,
+      wantsGoogleMeet,
+      locationType: booking.locationType || eventType.locationType,
+    });
     return null;
   }
 
