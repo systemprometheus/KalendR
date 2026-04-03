@@ -3,7 +3,24 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 
 function resolveWritableDataDir(): string {
-  const preferred = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : null;
+  const preferred = process.env.DATA_DIR?.trim()
+    ? path.resolve(process.env.DATA_DIR)
+    : null;
+  const isProductionRuntime = process.env.NODE_ENV === 'production'
+    && process.env.NEXT_PHASE !== 'phase-production-build';
+
+  if (isProductionRuntime && !preferred) {
+    throw new Error(
+      'DATA_DIR must be configured in production. Refusing to fall back to ephemeral local storage.'
+    );
+  }
+
+  if (isProductionRuntime && preferred) {
+    fs.mkdirSync(preferred, { recursive: true });
+    fs.accessSync(preferred, fs.constants.R_OK | fs.constants.W_OK);
+    return preferred;
+  }
+
   const candidates = [
     preferred,
     path.join(process.cwd(), 'data'),
