@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { requireAuthWithScopes } from '@/lib/auth';
 import { connectedCalendars } from '@/lib/db';
 import {
   buildGoogleCalendarOAuthUrl,
@@ -9,8 +9,7 @@ import {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { user } = await requireAuthWithScopes(['calendars:read']);
 
     await recoverGoogleCalendarConnection(user.id).catch((error) => {
       console.error('Failed to recover Google Calendar connection', error);
@@ -42,6 +41,12 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ calendars: safe });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden:')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -49,8 +54,7 @@ export async function GET(req: NextRequest) {
 // Connect flow - generates OAuth URLs for calendar providers
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    await requireAuthWithScopes(['calendars:write']);
 
     const { provider } = await req.json();
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
@@ -95,6 +99,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Unsupported provider' }, { status: 400 });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden:')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -192,6 +192,7 @@ export const db = {
 // Type-safe collection accessors
 export const users = () => db.collection<any>('users');
 export const sessions = () => db.collection<any>('sessions');
+export const agentTokens = () => db.collection<any>('agent_tokens');
 export const passwordResets = () => db.collection<any>('password_resets');
 export const organizations = () => db.collection<any>('organizations');
 export const teams = () => db.collection<any>('teams');

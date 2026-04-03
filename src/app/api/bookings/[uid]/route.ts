@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentAuthContext, requireAuthWithScopes } from '@/lib/auth';
 import { bookings, eventTypes, users } from '@/lib/db';
 import { sendEmail, cancellationEmail } from '@/lib/email';
 import { deleteGoogleCalendarEventForBooking, ensureGoogleCalendarWatches } from '@/lib/google-calendar';
@@ -51,9 +51,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
 
     if (action === 'cancel') {
       // Verify token (either cancelToken from invitee or auth from host)
-      const user = await getCurrentUser();
+      const authContext = await getCurrentAuthContext();
+      const user = authContext?.user || null;
       const isHost = user && user.id === booking.hostId;
       const hasToken = cancelToken && cancelToken === booking.cancelToken;
+
+      if (isHost) {
+        await requireAuthWithScopes(['bookings:write']);
+      }
 
       if (!isHost && !hasToken) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -111,9 +116,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
     }
 
     if (action === 'reschedule') {
-      const user = await getCurrentUser();
+      const authContext = await getCurrentAuthContext();
+      const user = authContext?.user || null;
       const isHost = user && user.id === booking.hostId;
       const hasToken = rescheduleToken && rescheduleToken === booking.rescheduleToken;
+
+      if (isHost) {
+        await requireAuthWithScopes(['bookings:write']);
+      }
 
       if (!isHost && !hasToken) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -153,6 +163,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden:')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
