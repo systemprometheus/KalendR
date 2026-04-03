@@ -5,39 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'next/navigation';
-
-const PLANS = [
-  {
-    name: 'Free',
-    key: 'free',
-    price: 0,
-    features: ['Unlimited event types', 'Unlimited bookings', 'Calendar integrations', 'Google Meet & Zoom', 'Email notifications', 'Website embeds'],
-    cta: 'Current Plan',
-    current: true,
-  },
-  {
-    name: 'Standard',
-    key: 'standard',
-    price: 9,
-    features: ['Unlimited event types', '6 connected calendars', 'Custom branding', 'Routing forms', 'Reminders & follow-ups', 'Remove branding'],
-    cta: 'Upgrade',
-    popular: true,
-  },
-  {
-    name: 'Teams',
-    key: 'teams',
-    price: 15,
-    features: ['Everything in Standard', 'Round-robin scheduling', 'Collective events', 'Team management', 'Admin controls', 'Salesforce integration'],
-    cta: 'Upgrade',
-  },
-  {
-    name: 'Enterprise',
-    key: 'enterprise',
-    price: null,
-    features: ['Everything in Teams', 'SSO/SAML', 'Advanced routing', 'Dedicated support', 'Custom SLA', 'API access'],
-    cta: 'Contact Sales',
-  },
-];
+import { PLAN_DEFINITIONS, PlanKey, getPlanLabel } from '@/lib/plans';
 
 export default function BillingPage() {
   const [org, setOrg] = useState<any>(null);
@@ -54,7 +22,7 @@ export default function BillingPage() {
 
     if (searchParams.get('success') === 'true') {
       const plan = searchParams.get('plan');
-      setSuccessMessage(`Successfully upgraded to ${plan || 'paid'} plan! Your subscription is now active.`);
+      setSuccessMessage(`Successfully switched to ${getPlanLabel(plan)}. Your billing settings are now active.`);
       // Refresh user data
       setTimeout(() => {
         fetch('/api/auth/me').then(r => r.json()).then(data => {
@@ -64,15 +32,24 @@ export default function BillingPage() {
     }
   }, [searchParams]);
 
-  const handleUpgrade = async (planKey: string) => {
+  const handleUpgrade = async (planKey: PlanKey) => {
     if (planKey === 'enterprise') {
       window.location.href = 'mailto:sales@kalendr.io?subject=Enterprise%20Plan%20Inquiry';
       return;
     }
 
+    if (org?.hasBillingPortalAccess && (planKey === 'free' || planKey === 'teams_free')) {
+      await handleManageSubscription();
+      return;
+    }
+
     setUpgrading(planKey);
     try {
-      const res = await fetch('/api/stripe/checkout', {
+      const endpoint = planKey === 'free' || planKey === 'teams_free'
+        ? '/api/billing/plan'
+        : '/api/stripe/checkout';
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: planKey }),
@@ -82,11 +59,13 @@ export default function BillingPage() {
 
       if (data.url) {
         window.location.href = data.url;
+      } else if (data.success) {
+        window.location.href = `/dashboard/billing?success=true&plan=${planKey}`;
       } else {
         alert(data.error || 'Failed to create checkout session');
       }
     } catch (error) {
-      alert('Failed to start checkout. Please try again.');
+      alert('Failed to update billing. Please try again.');
     } finally {
       setUpgrading(null);
     }
@@ -111,6 +90,11 @@ export default function BillingPage() {
   }
 
   const currentPlan = org?.plan || 'free';
+  const planSeatSummary = currentPlan === 'teams_free'
+    ? `${org?.planSeats || 5} included seats`
+    : org?.planSeats
+      ? `${org.planSeats} seat(s)`
+      : null;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -131,13 +115,13 @@ export default function BillingPage() {
           <div>
             <h2 className="font-semibold text-gray-900">Current Plan</h2>
             <p className="text-sm text-gray-500 mt-1">
-              You&apos;re on the <span className="font-medium capitalize">{currentPlan}</span> plan
-              {org?.planSeats ? ` with ${org.planSeats} seat(s)` : ''}
+              You&apos;re on the <span className="font-medium">{getPlanLabel(currentPlan)}</span> plan
+              {planSeatSummary ? ` with ${planSeatSummary}` : ''}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge variant="info" className="text-sm px-3 py-1 capitalize">{currentPlan}</Badge>
-            {currentPlan !== 'free' && org?.stripeCustomerId && (
+            <Badge variant="info" className="text-sm px-3 py-1">{getPlanLabel(currentPlan)}</Badge>
+            {org?.hasBillingPortalAccess && (
               <Button variant="outline" size="sm" onClick={handleManageSubscription}>
                 <ExternalLink className="w-3 h-3 mr-1" />
                 Manage Subscription
@@ -147,9 +131,10 @@ export default function BillingPage() {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {PLANS.map(plan => {
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        {PLAN_DEFINITIONS.map(plan => {
           const isCurrent = currentPlan === plan.key;
+          const usesPortalForChange = org?.hasBillingPortalAccess && (plan.key === 'free' || plan.key === 'teams_free') && !isCurrent;
           return (
             <Card key={plan.name} className={`relative ${plan.popular ? 'border-[#03b2d1] border-2' : ''}`}>
               {plan.popular && (
@@ -160,12 +145,16 @@ export default function BillingPage() {
               <div className="pt-2">
                 <h3 className="text-lg font-semibold text-gray-900">{plan.name}</h3>
                 <div className="mt-2 mb-4">
-                  {plan.price !== null ? (
-                    <span className="text-3xl font-bold text-gray-900">${plan.price}<span className="text-sm font-normal text-gray-500">/mo per seat</span></span>
+                  {plan.monthlyPrice !== null ? (
+                    <div className="space-y-1">
+                      <span className="text-3xl font-bold text-gray-900">${plan.monthlyPrice}</span>
+                      <p className="text-sm font-normal text-gray-500">{plan.periodLabel}</p>
+                    </div>
                   ) : (
                     <span className="text-xl font-semibold text-gray-900">Custom</span>
                   )}
                 </div>
+                <p className="text-sm text-gray-500 mb-4">{plan.description}</p>
                 <ul className="space-y-2 mb-6">
                   {plan.features.map(f => (
                     <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
@@ -180,7 +169,7 @@ export default function BillingPage() {
                   disabled={isCurrent || upgrading === plan.key}
                   onClick={() => handleUpgrade(plan.key)}
                 >
-                  {upgrading === plan.key ? 'Redirecting...' : isCurrent ? 'Current Plan' : plan.cta}
+                  {upgrading === plan.key ? 'Redirecting...' : isCurrent ? 'Current Plan' : usesPortalForChange ? 'Manage in Portal' : plan.cta}
                 </Button>
               </div>
             </Card>

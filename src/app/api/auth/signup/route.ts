@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { users, organizations, availabilitySchedules, availabilityRules } from '@/lib/db';
 import { hashPassword, createSession, generateSlug } from '@/lib/auth';
+import { getDefaultSeatsForPlan } from '@/lib/plans';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
       name: `${name}'s Organization`,
       slug: generateSlug(name + '-org'),
       plan: 'free',
-      planSeats: 1,
+      planSeats: getDefaultSeatsForPlan('free'),
     });
 
     // Create user

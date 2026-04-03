@@ -10,8 +10,15 @@ export async function GET(req: NextRequest) {
     if (user.organizationId) {
       org = organizations().findById(user.organizationId);
       if (org) {
-        const { stripeCustomerId, stripeSubscriptionId, ...safeOrg } = org;
-        org = safeOrg;
+        const { stripeSubscriptionId, ...restOrg } = org;
+        org = {
+          ...restOrg,
+          hasBillingPortalAccess: Boolean(
+            org.stripeCustomerId &&
+            org.plan !== 'free' &&
+            org.plan !== 'teams_free',
+          ),
+        };
       }
     }
 

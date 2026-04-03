@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { users } from '@/lib/db';
+import { organizations, users } from '@/lib/db';
 
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia' as any,
@@ -29,18 +29,20 @@ export async function POST(req: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
+        const organizationId = session.metadata?.organizationId;
         const plan = session.metadata?.plan;
 
-        if (userId && plan) {
-          const user = users().findById(userId);
-          if (user) {
-            users().update(userId, {
+        if (plan && (organizationId || userId)) {
+          const resolvedOrganizationId = organizationId || users().findById(userId || '')?.organizationId;
+
+          if (resolvedOrganizationId) {
+            organizations().update(resolvedOrganizationId, {
               plan,
               stripeCustomerId: session.customer as string,
               stripeSubscriptionId: session.subscription as string,
               planUpdatedAt: new Date().toISOString(),
             });
-            console.log(`User ${userId} upgraded to ${plan} plan`);
+            console.log(`Organization ${resolvedOrganizationId} upgraded to ${plan} plan`);
           }
         }
         break;
@@ -48,29 +50,34 @@ export async function POST(req: NextRequest) {
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
+        const organizationId = subscription.metadata?.organizationId;
         const userId = subscription.metadata?.userId;
 
-        if (userId) {
+        const resolvedOrganizationId = organizationId || users().findById(userId || '')?.organizationId;
+        if (resolvedOrganizationId) {
           const status = subscription.status;
-          users().update(userId, {
+          organizations().update(resolvedOrganizationId, {
             subscriptionStatus: status,
           });
-          console.log(`User ${userId} subscription status: ${status}`);
+          console.log(`Organization ${resolvedOrganizationId} subscription status: ${status}`);
         }
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
+        const organizationId = subscription.metadata?.organizationId;
         const userId = subscription.metadata?.userId;
 
-        if (userId) {
-          users().update(userId, {
+        const resolvedOrganizationId = organizationId || users().findById(userId || '')?.organizationId;
+        if (resolvedOrganizationId) {
+          organizations().update(resolvedOrganizationId, {
             plan: 'free',
             subscriptionStatus: 'canceled',
             stripeSubscriptionId: null,
+            planSeats: 1,
           });
-          console.log(`User ${userId} subscription canceled, reverted to free`);
+          console.log(`Organization ${resolvedOrganizationId} subscription canceled, reverted to free`);
         }
         break;
       }
@@ -80,12 +87,12 @@ export async function POST(req: NextRequest) {
         const subscriptionId = (invoice as any).subscription as string;
 
         if (subscriptionId) {
-          const matchedUsers = users().findMany({ where: { stripeSubscriptionId: subscriptionId } });
-          if (matchedUsers.length > 0) {
-            users().update(matchedUsers[0].id, {
+          const matchedOrganizations = organizations().findMany({ where: { stripeSubscriptionId: subscriptionId } });
+          if (matchedOrganizations.length > 0) {
+            organizations().update(matchedOrganizations[0].id, {
               subscriptionStatus: 'past_due',
             });
-            console.log(`User ${matchedUsers[0].id} payment failed, marked past_due`);
+            console.log(`Organization ${matchedOrganizations[0].id} payment failed, marked past_due`);
           }
         }
         break;

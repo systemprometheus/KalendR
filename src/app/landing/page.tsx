@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Calendar, ArrowRight, CheckCircle, Users, GitBranch, Zap, Globe, Shield, BarChart3, Clock, Code, Mail } from 'lucide-react';
 import Logo from '@/components/ui/logo';
 import { GoogleIcon, MicrosoftIcon } from '@/components/ui/brand-icons';
+import { PLAN_DEFINITIONS } from '@/lib/plans';
 
 export default function LandingPage() {
   return (
@@ -147,53 +148,18 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Simple, transparent pricing</h2>
-            <p className="text-lg text-gray-500">Start free, upgrade as your team grows</p>
+            <p className="text-lg text-gray-500">Start free as a solo user or a team of up to 5, then upgrade when you need more seats.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[
-              {
-                name: 'Free',
-                price: '$0',
-                period: 'forever',
-                description: 'For individuals getting started',
-                features: ['Unlimited event types', 'Unlimited bookings', 'Calendar integrations', 'Google Meet & Zoom', 'Email notifications', 'Website embeds'],
-                cta: 'Get Started',
-                highlighted: false,
-              },
-              {
-                name: 'Standard',
-                price: '$9',
-                period: '/seat/month',
-                description: 'For professionals',
-                features: ['Unlimited event types', 'Custom branding', 'Routing forms', 'Reminders & follow-ups', 'Remove branding', '6 connected calendars'],
-                cta: 'Start Free Trial',
-                highlighted: true,
-              },
-              {
-                name: 'Teams',
-                price: '$15',
-                period: '/seat/month',
-                description: 'For growing sales teams',
-                features: ['Everything in Standard', 'Round-robin scheduling', 'Workflow automation', 'Team management', 'Calendar integrations', 'Admin controls'],
-                cta: 'Start Free Trial',
-                highlighted: false,
-              },
-              {
-                name: 'Enterprise',
-                price: 'Custom',
-                period: '',
-                description: 'For large organizations',
-                features: ['Everything in Teams', 'SSO/SAML', 'Advanced routing', 'Salesforce integration', 'Dedicated support', 'Custom SLA', 'API access'],
-                cta: 'Contact Sales',
-                highlighted: false,
-              },
-            ].map(plan => (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+            {PLAN_DEFINITIONS.map(plan => (
               <div key={plan.name} className={`rounded-2xl p-8 ${plan.highlighted ? 'bg-[#03b2d1] text-white ring-4 ring-[#03b2d1]/20 scale-105' : 'bg-white border border-gray-200'}`}>
                 <h3 className={`text-lg font-semibold ${plan.highlighted ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
                 <div className="mt-2 mb-4">
-                  <span className={`text-4xl font-bold ${plan.highlighted ? 'text-white' : 'text-gray-900'}`}>{plan.price}</span>
-                  <span className={`text-sm ${plan.highlighted ? 'text-blue-200' : 'text-gray-500'}`}>{plan.period}</span>
+                  <span className={`text-4xl font-bold ${plan.highlighted ? 'text-white' : 'text-gray-900'}`}>
+                    {plan.monthlyPrice !== null ? `$${plan.monthlyPrice}` : 'Custom'}
+                  </span>
+                  <span className={`text-sm ${plan.highlighted ? 'text-blue-200' : 'text-gray-500'}`}>{plan.periodLabel}</span>
                 </div>
                 <p className={`text-sm mb-6 ${plan.highlighted ? 'text-blue-200' : 'text-gray-500'}`}>{plan.description}</p>
                 <ul className="space-y-2 mb-8">

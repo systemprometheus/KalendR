@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
+import { organizations, users } from '@/lib/db';
 import Stripe from 'stripe';
 
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -50,6 +51,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (!user.organizationId) {
+      return NextResponse.json({ error: 'No organization found' }, { status: 400 });
+    }
+
     const { plan } = await req.json();
 
     if (!PRICE_MAP[plan]) {
@@ -62,15 +67,21 @@ export async function POST(req: NextRequest) {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
 
+    const organization = organizations().findById(user.organizationId);
+    if (!organization) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
     const stripe = getStripe();
     const priceId = await getValidatedPriceId(stripe, plan);
+    const organizationSeatCount = users().count({ organizationId: organization.id });
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
         {
           price: priceId,
-          quantity: 1,
+          quantity: Math.max(organizationSeatCount, 1),
         },
       ],
       success_url: `${appUrl}/dashboard/billing?success=true&plan=${plan}`,
@@ -78,11 +89,13 @@ export async function POST(req: NextRequest) {
       customer_email: user.email,
       metadata: {
         userId: user.id,
+        organizationId: organization.id,
         plan,
       },
       subscription_data: {
         metadata: {
           userId: user.id,
+          organizationId: organization.id,
           plan,
         },
       },

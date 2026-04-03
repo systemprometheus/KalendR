@@ -81,7 +81,7 @@ model Organization {
   // Billing
   stripeCustomerId     String?
   stripeSubscriptionId String?
-  plan                 String  @default("free") // free, standard, teams, enterprise
+  plan                 String  @default("free") // free, standard, teams_free, teams, enterprise
   planSeats            Int     @default(1)
   planExpiresAt        DateTime?
 

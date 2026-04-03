@@ -110,7 +110,7 @@ export interface Organization {
   logoUrl?: string;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
-  plan: 'free' | 'standard' | 'teams' | 'enterprise';
+  plan: 'free' | 'standard' | 'teams_free' | 'teams' | 'enterprise';
   planSeats: number;
   planExpiresAt?: string;
   createdAt: string;

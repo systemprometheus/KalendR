@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { users } from '@/lib/db';
+import { organizations } from '@/lib/db';
 import Stripe from 'stripe';
 
 const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -14,9 +14,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Re-fetch full user record (getCurrentUser strips some fields)
-    const user = users().findById(currentUser.id);
-    if (!user?.stripeCustomerId) {
+    if (!currentUser.organizationId) {
+      return NextResponse.json({ error: 'No organization found' }, { status: 400 });
+    }
+
+    const organization = organizations().findById(currentUser.organizationId);
+    if (!organization?.stripeCustomerId) {
       return NextResponse.json({ error: 'No active subscription' }, { status: 400 });
     }
 
@@ -24,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const stripe = getStripe();
     const portalSession = await stripe.billingPortal.sessions.create({
-      customer: user.stripeCustomerId,
+      customer: organization.stripeCustomerId,
       return_url: `${appUrl}/dashboard/billing`,
     });
 
