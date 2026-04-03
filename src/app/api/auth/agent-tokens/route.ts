@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAgentAccessToken, DEFAULT_AGENT_TOKEN_SCOPES, requireAuthWithScopes } from '@/lib/auth';
+import {
+  createAgentAccessToken,
+  requireAuthWithScopes,
+  validateAgentTokenScopes,
+} from '@/lib/auth';
 import { agentTokens } from '@/lib/db';
 
 function toSafeToken(token: any) {
@@ -38,7 +42,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { user } = await requireAuthWithScopes(['tokens:write']);
+    const auth = await requireAuthWithScopes(['tokens:write']);
+    const { user } = auth;
 
     const body = await req.json().catch(() => ({}));
     const expiresInDays = Number(body.expiresInDays ?? 90);
@@ -47,12 +52,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'expiresInDays must be between 1 and 365' }, { status: 400 });
     }
 
+    const { scopes, invalidScopes, escalatedScopes } = validateAgentTokenScopes(body.scopes, auth);
+
+    if (invalidScopes.length > 0) {
+      return NextResponse.json({
+        error: `Unknown scopes requested: ${invalidScopes.join(', ')}`,
+      }, { status: 400 });
+    }
+
+    if (escalatedScopes.length > 0) {
+      return NextResponse.json({
+        error: `Agent tokens cannot grant scopes they do not already have: ${escalatedScopes.join(', ')}`,
+      }, { status: 403 });
+    }
+
     const { token, agentToken } = await createAgentAccessToken(user.id, {
       name: typeof body.name === 'string' ? body.name : 'Kalendrio MCP',
       expiresInDays,
-      scopes: Array.isArray(body.scopes)
-        ? body.scopes.filter((item: unknown): item is string => typeof item === 'string')
-        : [...DEFAULT_AGENT_TOKEN_SCOPES],
+      scopes,
     });
 
     return NextResponse.json({
