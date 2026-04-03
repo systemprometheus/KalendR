@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { loadConfig } from './lib/config.js';
 import { createKalendrioMcpServer } from './create-server.js';
+import { withKalendrioRequestAuth } from './lib/request-auth.js';
 
 const config = loadConfig();
 const port = Number(process.env.MCP_PORT || 3100);
@@ -22,6 +23,19 @@ async function readJsonBody(req: IncomingMessage) {
   const raw = Buffer.concat(chunks).toString('utf-8').trim();
   if (!raw) return undefined;
   return JSON.parse(raw);
+}
+
+function readBearerToken(req: IncomingMessage) {
+  const value = req.headers.authorization;
+  if (!value) return undefined;
+  const [scheme, token] = value.trim().split(/\s+/, 2);
+  if (!scheme || !token || scheme.toLowerCase() !== 'bearer') return undefined;
+  return token;
+}
+
+function readSessionCookie(req: IncomingMessage) {
+  const value = req.headers.cookie;
+  return typeof value === 'string' && value.trim() ? value : undefined;
 }
 
 const httpServer = createServer(async (req, res) => {
@@ -62,7 +76,12 @@ const httpServer = createServer(async (req, res) => {
     await server.connect(transport);
 
     const parsedBody = req.method === 'POST' ? await readJsonBody(req) : undefined;
-    await transport.handleRequest(req, res, parsedBody);
+    await withKalendrioRequestAuth({
+      bearerToken: readBearerToken(req),
+      sessionCookie: readSessionCookie(req),
+    }, async () => {
+      await transport.handleRequest(req, res, parsedBody);
+    });
   } catch (error) {
     console.error('kalendrio-mcp http request failed', error);
     if (!res.headersSent) {

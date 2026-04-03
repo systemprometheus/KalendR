@@ -30,6 +30,12 @@ async function main() {
   const toolsResult = await client.listTools();
   console.log('Available tools over HTTP:', toolsResult.tools.map((tool) => tool.name).join(', '));
 
+  const profileResult = await client.callTool({
+    name: 'get_authenticated_profile',
+    arguments: {},
+  });
+  console.log('Authenticated profile over HTTP:', JSON.stringify(profileResult.structuredContent, null, 2));
+
   const now = new Date();
   const datesResult = await client.callTool({
     name: 'list_available_dates',

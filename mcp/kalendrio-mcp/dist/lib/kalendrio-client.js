@@ -1,4 +1,5 @@
 import { loadConfig } from './config.js';
+import { getKalendrioRequestAuth } from './request-auth.js';
 export class KalendrioApiError extends Error {
     status;
     reason;
@@ -19,7 +20,11 @@ export class KalendrioClient {
         this.config = config;
     }
     hasAuth() {
-        return Boolean(this.config.KALENDRIO_SESSION_COOKIE || this.config.KALENDRIO_BEARER_TOKEN);
+        const auth = this.resolveAuth();
+        return Boolean(auth.sessionCookie || auth.bearerToken);
+    }
+    async getCurrentProfile() {
+        return this.request('/api/auth/me', undefined, { authRequired: true });
     }
     async getPublicEventType(username, slug) {
         return this.request(`/api/scheduling/${encodeURIComponent(username)}/${encodeURIComponent(slug)}`);
@@ -94,14 +99,15 @@ export class KalendrioClient {
         return this.request('/api/integrations/calendars', undefined, { authRequired: true });
     }
     async request(path, init, options) {
+        const auth = this.resolveAuth();
         const headers = new Headers(init?.headers ?? {});
         headers.set('accept', 'application/json');
         headers.set('user-agent', this.config.KALENDRIO_USER_AGENT);
-        if (this.config.KALENDRIO_SESSION_COOKIE) {
-            headers.set('cookie', this.config.KALENDRIO_SESSION_COOKIE);
+        if (auth.sessionCookie) {
+            headers.set('cookie', auth.sessionCookie);
         }
-        if (this.config.KALENDRIO_BEARER_TOKEN) {
-            headers.set('authorization', `Bearer ${this.config.KALENDRIO_BEARER_TOKEN}`);
+        if (auth.bearerToken) {
+            headers.set('authorization', `Bearer ${auth.bearerToken}`);
         }
         if (options?.authRequired && !this.hasAuth()) {
             throw new Error('This tool requires Kalendrio auth. Set KALENDRIO_SESSION_COOKIE or KALENDRIO_BEARER_TOKEN.');
@@ -116,6 +122,13 @@ export class KalendrioClient {
             throw buildApiError(response.status, data);
         }
         return data;
+    }
+    resolveAuth() {
+        const requestAuth = getKalendrioRequestAuth();
+        return {
+            bearerToken: requestAuth?.bearerToken || this.config.KALENDRIO_BEARER_TOKEN,
+            sessionCookie: requestAuth?.sessionCookie || this.config.KALENDRIO_SESSION_COOKIE,
+        };
     }
 }
 function safeJsonParse(value) {
@@ -144,6 +157,10 @@ function buildApiError(status, data) {
     if (status === 400) {
         reason = 'validation_error';
         suggestedNextAction = 'Verify the tool inputs and try again.';
+    }
+    else if (status === 403) {
+        reason = 'forbidden';
+        suggestedNextAction = 'Use a token with the required scope and retry.';
     }
     else if (status === 401) {
         reason = 'unauthorized';

@@ -27,6 +27,7 @@ For the detailed tool-by-tool contract, see `SPEC.md`.
 - create a booking with `create_booking`
 
 ### Authenticated host flows
+- inspect the authenticated user and org with `get_authenticated_profile`
 - list upcoming or past bookings with `list_bookings`
 - inspect a specific booking with `get_booking`
 - cancel or reschedule a booking with `cancel_booking` and `reschedule_booking`
@@ -77,6 +78,13 @@ Set one of these environment variables:
 
 - `KALENDRIO_BEARER_TOKEN`: preferred for agent use
 - `KALENDRIO_SESSION_COOKIE`: still supported for browser-session-based local usage
+
+Hosted HTTP clients can also send Kalendrio auth on each MCP request:
+
+- `Authorization: Bearer <kalendrio_agent_token>`
+- `Cookie: session=<kalendrio_session_cookie>`
+
+When those headers are present, Kalendrio MCP forwards them upstream for that specific request. This makes hosted MCP usable for per-user auth instead of only a single shared server token.
 
 ### Scope model
 Agent tokens can be scoped. Current route checks recognize:
@@ -169,6 +177,8 @@ KALENDRIO_BEARER_TOKEN=your_agent_token \
 npm run smoke:http
 ```
 
+The HTTP smoke test uses `Authorization: Bearer ...` against the MCP server itself, and the server forwards that token to Kalendrio when it calls authenticated routes.
+
 ## Build
 
 ```bash
@@ -203,10 +213,11 @@ npm run start
 4. `create_booking`
 
 ### Triage a founder calendar
-1. `list_bookings`
-2. `get_booking`
-3. `cancel_booking` or `reschedule_booking`
-4. `list_connected_calendars`
+1. `get_authenticated_profile`
+2. `list_bookings`
+3. `get_booking`
+4. `cancel_booking` or `reschedule_booking`
+5. `list_connected_calendars`
 
 ### Provision a new booking page
 1. `create_event_type`
@@ -217,9 +228,7 @@ npm run start
 
 This package is now production-shaped, but a few follow-ups would strengthen it further:
 
-- normalize HTTP errors into richer MCP tool errors with typed reasons like `calendar_conflict`
 - add host-scoped filtering and pagination to list tools as the product grows
-- add richer scope enforcement on agent tokens
 - add persistent session or resumability support if long-lived hosted MCP sessions become important
 
 ## Recommended next iteration

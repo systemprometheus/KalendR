@@ -1,10 +1,11 @@
 import { KalendrioApiError } from './kalendrio-client.js';
 export function formatJsonResult(data, summary) {
+    const formatted = JSON.stringify(data, null, 2);
     return {
         content: [
             {
                 type: 'text',
-                text: summary ?? JSON.stringify(data, null, 2),
+                text: summary ? `${summary}\n\n${formatted}` : formatted,
             },
         ],
         structuredContent: data,
