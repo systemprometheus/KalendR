@@ -861,6 +861,12 @@ export async function createGoogleCalendarEventForBooking(params: {
   host: User;
 }) {
   const { booking, eventType, host } = params;
+  const looksLikeMeet = (value?: string | null) => Boolean(value && value.toLowerCase().includes('google meet'));
+  const wantsGoogleMeet =
+    booking.locationType === 'google_meet'
+    || eventType.locationType === 'google_meet'
+    || looksLikeMeet(booking.locationValue)
+    || looksLikeMeet(eventType.locationValue);
   const calendar = getGoogleAddToCalendar(booking.hostId);
   if (!calendar) {
     return null;
@@ -897,7 +903,7 @@ export async function createGoogleCalendarEventForBooking(params: {
     },
   };
 
-  if (booking.locationType === 'google_meet') {
+  if (wantsGoogleMeet) {
     body.conferenceData = {
       createRequest: {
         requestId: randomUUID(),
@@ -922,7 +928,7 @@ export async function createGoogleCalendarEventForBooking(params: {
     },
     {
       sendUpdates: 'all',
-      conferenceDataVersion: booking.locationType === 'google_meet' ? '1' : undefined,
+      conferenceDataVersion: wantsGoogleMeet ? '1' : undefined,
     },
   );
 
@@ -941,7 +947,7 @@ export async function createGoogleCalendarEventForBooking(params: {
   let htmlLink = data.htmlLink || '';
 
   // Meet links can occasionally lag behind the initial create response.
-  if (booking.locationType === 'google_meet' && data?.id && !meetingUrl) {
+  if (wantsGoogleMeet && data?.id && !meetingUrl) {
     const refreshedEvent = await fetchGoogleCalendarEvent(calendar, String(data.id));
     if (refreshedEvent) {
       meetingUrl = extractGoogleMeetingUrl(refreshedEvent);
@@ -950,7 +956,7 @@ export async function createGoogleCalendarEventForBooking(params: {
   }
 
   // If Meet still isn't attached, explicitly patch conference data and fetch again.
-  if (booking.locationType === 'google_meet' && data?.id && !meetingUrl) {
+  if (wantsGoogleMeet && data?.id && !meetingUrl) {
     const patchedEvent = await requestGoogleMeetConference(calendar, String(data.id));
     if (patchedEvent) {
       meetingUrl = extractGoogleMeetingUrl(patchedEvent) || meetingUrl;
