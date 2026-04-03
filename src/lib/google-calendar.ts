@@ -89,7 +89,9 @@ export const GOOGLE_CALENDAR_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
-const GOOGLE_INTERNAL_SECRET = getJwtSecret();
+function getGoogleInternalSecret() {
+  return getJwtSecret();
+}
 const GOOGLE_WATCH_RENEW_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GOOGLE_WATCH_REQUEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const GOOGLE_WATCH_CURSOR_LOOKBACK_MS = 5 * 60 * 1000;
@@ -171,7 +173,7 @@ function getGoogleCalendarWatchCallbackUrl() {
 }
 
 function buildGoogleWatchSignature(calendar: ConnectedGoogleCalendar) {
-  return createHmac('sha256', GOOGLE_INTERNAL_SECRET)
+  return createHmac('sha256', getGoogleInternalSecret())
     .update(`${calendar.id}:${calendar.userId}:${calendar.calendarId}`)
     .digest('hex');
 }
