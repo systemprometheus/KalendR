@@ -56,6 +56,11 @@ type GoogleCalendarEvent = {
   start?: GoogleCalendarEventDateTime;
   end?: GoogleCalendarEventDateTime;
   conferenceData?: {
+    createRequest?: {
+      status?: {
+        statusCode?: string;
+      };
+    };
     entryPoints?: Array<{
       entryPointType?: string;
       uri?: string;
@@ -81,6 +86,8 @@ type GoogleBookingEventResult = {
   htmlLink?: string;
   meetingUrl?: string | null;
 };
+
+type GoogleConferenceStatus = 'pending' | 'success' | 'failure' | null;
 
 type LegacyGoogleMeetIntegration = {
   id: string;
@@ -1010,6 +1017,19 @@ function extractGoogleMeetingUrl(event: Pick<GoogleCalendarEvent, 'conferenceDat
   return entryPoint?.uri || event.hangoutLink || null;
 }
 
+function extractGoogleConferenceStatus(event?: Pick<GoogleCalendarEvent, 'conferenceData'> | null): GoogleConferenceStatus {
+  const statusCode = event?.conferenceData?.createRequest?.status?.statusCode;
+  if (statusCode === 'pending' || statusCode === 'success' || statusCode === 'failure') {
+    return statusCode;
+  }
+
+  return null;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchGoogleCalendarEvent(
   calendar: ConnectedGoogleCalendar,
   eventId: string,
@@ -1076,32 +1096,65 @@ async function requestGoogleMeetConference(
   return await response.json() as GoogleCalendarEvent;
 }
 
-export async function createGoogleCalendarEventForBooking(params: {
+async function waitForGoogleMeetConference(
+  calendar: ConnectedGoogleCalendar,
+  eventId: string,
+) {
+  let latestEvent: GoogleCalendarEvent | null = null;
+  let meetingUrl: string | null = null;
+  let htmlLink = '';
+  let conferenceStatus: GoogleConferenceStatus = null;
+
+  for (const delayMs of [400, 900, 1800, 3200, 5000]) {
+    await sleep(delayMs);
+    latestEvent = await fetchGoogleCalendarEvent(calendar, eventId);
+
+    if (!latestEvent) {
+      continue;
+    }
+
+    meetingUrl = extractGoogleMeetingUrl(latestEvent);
+    htmlLink = latestEvent.htmlLink || htmlLink;
+    conferenceStatus = extractGoogleConferenceStatus(latestEvent);
+
+    if (meetingUrl || conferenceStatus === 'success' || conferenceStatus === 'failure') {
+      break;
+    }
+  }
+
+  return {
+    latestEvent,
+    meetingUrl,
+    htmlLink,
+    conferenceStatus,
+  };
+}
+
+function getGoogleMeetFallbackCalendar(
+  userId: string,
+  currentCalendar: ConnectedGoogleCalendar,
+) {
+  const calendars = getAllConnectedGoogleCalendars(userId)
+    .filter((calendar) => canWriteGoogleCalendar(calendar));
+
+  return calendars.find((calendar) => (
+    calendar.id !== currentCalendar.id
+    && calendar.accountExternalId === currentCalendar.accountExternalId
+    && calendar.isPrimary
+  )) || calendars.find((calendar) => (
+    calendar.id !== currentCalendar.id
+    && calendar.isPrimary
+  )) || null;
+}
+
+async function createGoogleCalendarEventOnCalendar(params: {
+  calendar: ConnectedGoogleCalendar;
   booking: Booking;
   eventType: EventType;
   host: User;
+  wantsGoogleMeet: boolean;
 }) {
-  const { booking, eventType, host } = params;
-  const looksLikeMeet = (value?: string | null) => Boolean(value && value.toLowerCase().includes('google meet'));
-  const wantsGoogleMeet =
-    booking.locationType === 'google_meet'
-    || eventType.locationType === 'google_meet'
-    || looksLikeMeet(booking.locationValue)
-    || looksLikeMeet(eventType.locationValue);
-  let calendar = getGoogleAddToCalendar(booking.hostId);
-  if (!calendar) {
-    calendar = await recoverGoogleCalendarConnection(booking.hostId);
-  }
-  if (!calendar) {
-    console.warn('No Google booking calendar available for booking', {
-      bookingId: booking.id,
-      hostId: booking.hostId,
-      wantsGoogleMeet,
-      locationType: booking.locationType || eventType.locationType,
-    });
-    return null;
-  }
-
+  const { calendar, booking, eventType, host, wantsGoogleMeet } = params;
   const body: Record<string, any> = {
     summary: eventType.title,
     description: buildGoogleEventDescription({ booking, eventType, host }),
@@ -1172,32 +1225,111 @@ export async function createGoogleCalendarEventForBooking(params: {
     return null;
   }
 
-  const data = await response.json();
+  const data = await response.json() as GoogleCalendarEvent;
   let meetingUrl = extractGoogleMeetingUrl(data);
   let htmlLink = data.htmlLink || '';
+  let conferenceStatus = extractGoogleConferenceStatus(data);
 
-  // Meet links can occasionally lag behind the initial create response.
-  if (wantsGoogleMeet && data?.id && !meetingUrl) {
-    const refreshedEvent = await fetchGoogleCalendarEvent(calendar, String(data.id));
-    if (refreshedEvent) {
-      meetingUrl = extractGoogleMeetingUrl(refreshedEvent);
-      htmlLink = refreshedEvent.htmlLink || htmlLink;
-    }
+  if (wantsGoogleMeet && data?.id && !meetingUrl && conferenceStatus !== 'failure') {
+    const awaitedConference = await waitForGoogleMeetConference(calendar, String(data.id));
+    meetingUrl = awaitedConference.meetingUrl || meetingUrl;
+    htmlLink = awaitedConference.htmlLink || htmlLink;
+    conferenceStatus = awaitedConference.conferenceStatus || conferenceStatus;
   }
 
-  // If Meet still isn't attached, explicitly patch conference data and fetch again.
-  if (wantsGoogleMeet && data?.id && !meetingUrl) {
+  if (wantsGoogleMeet && data?.id && !meetingUrl && conferenceStatus !== 'success') {
     const patchedEvent = await requestGoogleMeetConference(calendar, String(data.id));
     if (patchedEvent) {
       meetingUrl = extractGoogleMeetingUrl(patchedEvent) || meetingUrl;
       htmlLink = patchedEvent.htmlLink || htmlLink;
+      conferenceStatus = extractGoogleConferenceStatus(patchedEvent) || conferenceStatus;
     }
 
-    if (!meetingUrl) {
-      const refreshedAfterPatch = await fetchGoogleCalendarEvent(calendar, String(data.id));
-      if (refreshedAfterPatch) {
-        meetingUrl = extractGoogleMeetingUrl(refreshedAfterPatch) || meetingUrl;
-        htmlLink = refreshedAfterPatch.htmlLink || htmlLink;
+    if (!meetingUrl && conferenceStatus !== 'failure') {
+      const awaitedConference = await waitForGoogleMeetConference(calendar, String(data.id));
+      meetingUrl = awaitedConference.meetingUrl || meetingUrl;
+      htmlLink = awaitedConference.htmlLink || htmlLink;
+      conferenceStatus = awaitedConference.conferenceStatus || conferenceStatus;
+    }
+  }
+
+  return {
+    connectedCalendarId: calendar.id,
+    calendarId: calendar.calendarId,
+    eventId: data.id,
+    htmlLink,
+    meetingUrl,
+    conferenceStatus,
+  };
+}
+
+export async function createGoogleCalendarEventForBooking(params: {
+  booking: Booking;
+  eventType: EventType;
+  host: User;
+}) {
+  const { booking, eventType, host } = params;
+  const looksLikeMeet = (value?: string | null) => Boolean(value && value.toLowerCase().includes('google meet'));
+  const wantsGoogleMeet =
+    booking.locationType === 'google_meet'
+    || eventType.locationType === 'google_meet'
+    || looksLikeMeet(booking.locationValue)
+    || looksLikeMeet(eventType.locationValue);
+  let calendar = getGoogleAddToCalendar(booking.hostId);
+  if (!calendar) {
+    calendar = await recoverGoogleCalendarConnection(booking.hostId);
+  }
+  if (!calendar) {
+    console.warn('No Google booking calendar available for booking', {
+      bookingId: booking.id,
+      hostId: booking.hostId,
+      wantsGoogleMeet,
+      locationType: booking.locationType || eventType.locationType,
+    });
+    return null;
+  }
+
+  let googleEvent = await createGoogleCalendarEventOnCalendar({
+    calendar,
+    booking,
+    eventType,
+    host,
+    wantsGoogleMeet,
+  });
+
+  if (!googleEvent) {
+    return null;
+  }
+
+  if (wantsGoogleMeet && !googleEvent.meetingUrl) {
+    const fallbackCalendar = getGoogleMeetFallbackCalendar(booking.hostId, calendar);
+    if (fallbackCalendar) {
+      console.warn('Retrying Google Meet creation on fallback calendar', {
+        bookingId: booking.id,
+        originalCalendarId: calendar.calendarId,
+        fallbackCalendarId: fallbackCalendar.calendarId,
+      });
+
+      const fallbackEvent = await createGoogleCalendarEventOnCalendar({
+        calendar: fallbackCalendar,
+        booking,
+        eventType,
+        host,
+        wantsGoogleMeet,
+      });
+
+      if (fallbackEvent?.meetingUrl) {
+        await deleteGoogleCalendarEventForBooking({
+          userId: booking.hostId,
+          eventId: googleEvent.eventId,
+          connectedCalendarId: googleEvent.connectedCalendarId,
+          calendarId: googleEvent.calendarId,
+        }).catch((error) => {
+          console.error('Failed to remove fallback Google Calendar event without Meet link', error);
+        });
+
+        googleEvent = fallbackEvent;
+        calendar = fallbackCalendar;
       }
     }
   }
@@ -1207,11 +1339,11 @@ export async function createGoogleCalendarEventForBooking(params: {
   });
 
   return {
-    connectedCalendarId: calendar.id,
-    calendarId: calendar.calendarId,
-    eventId: data.id,
-    htmlLink,
-    meetingUrl,
+    connectedCalendarId: googleEvent.connectedCalendarId,
+    calendarId: googleEvent.calendarId,
+    eventId: googleEvent.eventId,
+    htmlLink: googleEvent.htmlLink,
+    meetingUrl: googleEvent.meetingUrl,
   } as GoogleBookingEventResult;
 }
 

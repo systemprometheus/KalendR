@@ -324,10 +324,7 @@ export async function POST(req: NextRequest) {
       // Send confirmation to invitee
       const googleCalendarInviteUrl = parseBookingMetadata(bookingRecord.metadata)?.googleCalendar?.htmlLink || null;
       const fallbackMeetingUrl = normalizeHttpUrl(bookingRecord.meetingUrl)
-        || normalizeHttpUrl(bookingRecord.locationValue)
-        || (bookingRecord.locationType === 'google_meet'
-          ? normalizeHttpUrl(googleCalendarInviteUrl)
-          : null);
+        || normalizeHttpUrl(bookingRecord.locationValue);
       const emailLocation = bookingRecord.locationType === 'google_meet'
         ? 'Google Meet'
         : (fallbackMeetingUrl
