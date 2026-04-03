@@ -318,7 +318,7 @@ export async function POST(req: NextRequest) {
       });
       confirmEmail.to = inviteeEmail;
       confirmEmail.attachments = [calendarInviteAttachment];
-      sendEmail(confirmEmail);
+      const confirmEmailPromise = sendEmail(confirmEmail);
 
       // Send notification to host
       const hostEmail = hostNotificationEmail({
@@ -335,7 +335,26 @@ export async function POST(req: NextRequest) {
       });
       hostEmail.to = host.email;
       hostEmail.attachments = [calendarInviteAttachment];
-      sendEmail(hostEmail);
+      const hostEmailPromise = sendEmail(hostEmail);
+
+      const [inviteeEmailResult, hostEmailResult] = await Promise.allSettled([
+        confirmEmailPromise,
+        hostEmailPromise,
+      ]);
+
+      if (inviteeEmailResult.status !== 'fulfilled' || !inviteeEmailResult.value) {
+        console.error('Failed to send booking confirmation email', {
+          bookingId: bookingRecord.id,
+          inviteeEmail,
+        });
+      }
+
+      if (hostEmailResult.status !== 'fulfilled' || !hostEmailResult.value) {
+        console.error('Failed to send host booking notification email', {
+          bookingId: bookingRecord.id,
+          hostEmail: host.email,
+        });
+      }
     }
 
     return NextResponse.json({
