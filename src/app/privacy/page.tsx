@@ -48,7 +48,7 @@ export default function PrivacyPage() {
               KalendR requests the minimum Google Calendar scopes needed for implemented features:
             </p>
             <ul className="mt-3 list-disc space-y-2 pl-5 font-mono text-xs text-gray-600 sm:text-sm">
-              <li>https://www.googleapis.com/auth/calendar.events.freebusy</li>
+              <li>https://www.googleapis.com/auth/calendar.freebusy</li>
               <li>https://www.googleapis.com/auth/calendar.events</li>
               <li>https://www.googleapis.com/auth/calendar.calendarlist.readonly</li>
               <li>https://www.googleapis.com/auth/userinfo.email</li>
