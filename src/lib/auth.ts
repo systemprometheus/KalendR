@@ -18,6 +18,8 @@ export const DEFAULT_AGENT_TOKEN_SCOPES = [
   'tokens:write',
 ] as const;
 
+export const ALLOWED_AGENT_TOKEN_SCOPES = [...DEFAULT_AGENT_TOKEN_SCOPES] as const;
+
 type SafeUser = Record<string, any>;
 type AuthContext = {
   user: SafeUser;
@@ -131,6 +133,35 @@ async function getCurrentUserFromSession(sessionToken: string) {
 function normalizeScopes(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item: unknown): item is string => typeof item === 'string');
+}
+
+export function normalizeAgentTokenScopes(value: unknown): string[] {
+  const allowed = new Set<string>(ALLOWED_AGENT_TOKEN_SCOPES);
+  return [...new Set(normalizeScopes(value).filter((scope) => allowed.has(scope)))];
+}
+
+export function validateAgentTokenScopes(requestedScopes: unknown, actor?: Pick<AuthContext, 'authType' | 'scopes'>) {
+  const scopes = normalizeAgentTokenScopes(requestedScopes);
+
+  if (!scopes.length) {
+    return {
+      scopes: [...DEFAULT_AGENT_TOKEN_SCOPES],
+      invalidScopes: [] as string[],
+      escalatedScopes: [] as string[],
+    };
+  }
+
+  const requested = normalizeScopes(requestedScopes);
+  const invalidScopes = requested.filter((scope) => !scopes.includes(scope));
+  const escalatedScopes = actor?.authType === 'agent_token'
+    ? scopes.filter((scope) => !hasScope(actor.scopes, scope))
+    : [];
+
+  return {
+    scopes,
+    invalidScopes,
+    escalatedScopes,
+  };
 }
 
 function hasScope(grantedScopes: string[], requiredScope: string) {
