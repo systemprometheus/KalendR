@@ -1,24 +1,26 @@
-/**
- * Real brand SVG icons for integration logos.
- * Each is a 24x24 or scalable SVG matching the official brand colors.
- */
+function AssetBrandIcon({
+  alt,
+  src,
+  className = 'w-6 h-6',
+  padded = false,
+}: {
+  alt: string;
+  src: string;
+  className?: string;
+  padded?: boolean;
+}) {
+  return (
+    <img
+      alt={alt}
+      src={src}
+      className={`${className} ${padded ? 'p-0.5' : ''} object-contain`}
+      draggable={false}
+    />
+  );
+}
 
 export function GoogleCalendarIcon({ className = 'w-6 h-6' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18.316 5.684H5.684v12.632h12.632V5.684z" fill="#fff"/>
-      <path d="M18.316 24l5.684-5.684h-5.684V24z" fill="#EA4335"/>
-      <path d="M24 5.684V0h-5.684l5.684 5.684z" fill="#188038"/>
-      <path d="M5.684 18.316V24H0l5.684-5.684z" fill="#1967D2"/>
-      <path d="M24 5.684h-5.684v12.632H24V5.684z" fill="#FBBC04"/>
-      <path d="M18.316 24V18.316H5.684V24h12.632z" fill="#34A853"/>
-      <path d="M5.684 5.684H0v12.632h5.684V5.684z" fill="#4285F4"/>
-      <path d="M5.684 0H0v5.684h5.684V0z" fill="#4285F4"/>
-      <path d="M18.316 0H5.684v5.684h12.632V0z" fill="#4285F4"/>
-      <path d="M8.87 16.042a2.56 2.56 0 01-1.103-.775 2.007 2.007 0 01-.428-1.004l1.1-.452c.067.325.218.604.452.835.233.232.53.348.89.348.37 0 .688-.128.95-.383.263-.256.395-.573.395-.95 0-.39-.14-.713-.418-.966-.279-.253-.624-.38-1.035-.38h-.642v-1.08h.576c.362 0 .665-.115.907-.346.242-.23.363-.534.363-.91 0-.343-.11-.62-.333-.83a1.128 1.128 0 00-.826-.315c-.342 0-.616.108-.82.325a1.606 1.606 0 00-.395.699l-1.08-.452c.117-.422.356-.798.719-1.128.362-.33.84-.495 1.433-.495.43 0 .814.093 1.155.28.341.186.607.44.798.765.19.324.286.683.286 1.078 0 .407-.09.756-.27 1.047-.18.29-.404.516-.673.676v.07c.343.17.625.418.844.742.22.325.33.71.33 1.155 0 .45-.112.852-.337 1.207a2.37 2.37 0 01-.915.835 2.64 2.64 0 01-1.322.33z" fill="#4285F4"/>
-      <path d="M14.595 16.042l-2.367-6.16h1.21l1.554 4.48h.046l1.533-4.48h1.21l-2.368 6.16h-.818z" fill="#4285F4"/>
-    </svg>
-  );
+  return <AssetBrandIcon alt="Google Calendar" src="/integrations/google-calendar-official.png" className={className} />;
 }
 
 export function MicrosoftOutlookIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -45,14 +47,7 @@ export function ZoomIcon({ className = 'w-6 h-6' }: { className?: string }) {
 }
 
 export function GoogleMeetIcon({ className = 'w-6 h-6' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M14.5 12l5.7-4.2c.5-.4 1.3-.1 1.3.6v7.2c0 .7-.8 1-1.3.6L14.5 12z" fill="#00832D"/>
-      <path d="M14.5 12V7.2c0-.9-.7-1.6-1.6-1.6H4.6c-.9 0-1.6.7-1.6 1.6v9.6c0 .9.7 1.6 1.6 1.6h8.3c.9 0 1.6-.7 1.6-1.6V12z" fill="#00AC47"/>
-      <path d="M3 7.2v9.6c0 .9.7 1.6 1.6 1.6h8.3c.9 0 1.6-.7 1.6-1.6V12L3 7.2z" fill="#00832D" opacity=".3"/>
-      <path d="M8.5 9.5v5M6 12h5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  );
+  return <AssetBrandIcon alt="Google Meet" src="/integrations/google-meet-official.svg" className={className} />;
 }
 
 export function StripeIcon({ className = 'w-6 h-6' }: { className?: string }) {

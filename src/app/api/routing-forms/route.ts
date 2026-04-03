@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import { getCurrentUser } from '@/lib/auth';
 import { routingForms } from '@/lib/db';
 
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
 
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(36).substring(2, 6);
+    const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${randomBytes(3).toString('hex')}`;
 
     const form = routingForms().create({
       name,

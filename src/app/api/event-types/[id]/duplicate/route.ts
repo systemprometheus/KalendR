@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import { getCurrentUser } from '@/lib/auth';
 import { eventTypes, eventTypeHosts } from '@/lib/db';
 
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const { id: _, createdAt, updatedAt, ...rest } = original;
-    const newSlug = `${original.slug}-copy-${Math.random().toString(36).substring(2, 6)}`;
+    const newSlug = `${original.slug}-copy-${randomBytes(3).toString('hex')}`;
 
     const duplicate = eventTypes().create({
       ...rest,

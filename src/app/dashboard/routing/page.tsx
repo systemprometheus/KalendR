@@ -69,7 +69,9 @@ export default function RoutingFormsPage() {
 
   const addRoute = () => {
     setRoutes([...routes, {
-      id: Math.random().toString(36).substr(2, 9),
+      id: globalThis.crypto?.randomUUID
+        ? globalThis.crypto.randomUUID()
+        : `route_${Date.now()}`,
       conditions: [{ fieldId: 'company_size', operator: 'equals', value: '1000+' }],
       logic: 'and',
       destination: { type: 'event_type', value: eventTypes[0]?.id || '' },

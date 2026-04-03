@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHash } from 'crypto';
 import { users, passwordResets } from '@/lib/db';
 import { generateToken, hashPassword, verifyToken } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
+
+function hashResetToken(token: string) {
+  return createHash('sha256').update(token).digest('hex');
+}
 
 // Request password reset
 export async function POST(req: NextRequest) {
@@ -20,10 +25,11 @@ export async function POST(req: NextRequest) {
     }
 
     const token = generateToken({ userId: user.id, type: 'password_reset' }, '1h');
+    const tokenHash = hashResetToken(token);
 
     passwordResets().create({
       userId: user.id,
-      token,
+      tokenHash,
       expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       used: false,
     });
@@ -75,8 +81,15 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid or expired reset token' }, { status: 400 });
     }
 
-    const reset = passwordResets().findFirst({ where: { token, used: false } });
+    const tokenHash = hashResetToken(token);
+    const reset = passwordResets().findFirst({ where: { tokenHash, used: false } })
+      // Backward compatibility for old reset entries stored before hashing.
+      || passwordResets().findFirst({ where: { token, used: false } });
     if (!reset || new Date(reset.expiresAt) < new Date()) {
+      return NextResponse.json({ error: 'Invalid or expired reset token' }, { status: 400 });
+    }
+
+    if (reset.userId !== payload.userId) {
       return NextResponse.json({ error: 'Invalid or expired reset token' }, { status: 400 });
     }
 
