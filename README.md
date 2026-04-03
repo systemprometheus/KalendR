@@ -227,15 +227,17 @@ ZOOM_CLIENT_SECRET=""
 2. Ensure a **Persistent Disk** is attached (already defined in `render.yaml`).
 3. Keep `DATA_DIR` on the mounted disk (`/var/data/kalendr-data`).
 4. Run exactly:
-   `buildCommand: npm install && npm run build`
+   `buildCommand: npm install --include=dev && npm run build`
    `startCommand: npm run start`
 5. Do **not** run `npm run db:seed` in production deploy hooks.
 6. Scale web service to **1 instance** when using file-based storage.
+7. Verify the live Render service actually uses the same `DATA_DIR` and `/api/health` settings as the repo blueprint.
 
 ### Important Notes
 
 - Current runtime persistence is JSON files in `DATA_DIR`.
 - Production data loss happens if filesystem is ephemeral or if seed script runs.
+- The app now refuses to boot in production if `DATA_DIR` is missing, so storage misconfiguration fails fast instead of silently booting on empty local files.
 - The seed script is now blocked in production unless `ALLOW_PRODUCTION_SEED=true`.
 
 ### Future Upgrade (recommended)
