@@ -1,7 +1,8 @@
-import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts } from './db';
+import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts, users } from './db';
 import { addMinutes, startOfDay, endOfDay, format, parse, isAfter, isBefore, addDays, eachDayOfInterval, setHours, setMinutes } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { getGoogleCalendarBusyIntervals, hasBusyIntervalConflict, hasGoogleCalendarConflict, type BusyInterval } from './google-calendar';
+import { ensureDefaultAvailabilitySchedule } from './default-availability';
 
 export interface TimeSlot {
   start: Date;
@@ -11,6 +12,21 @@ export interface TimeSlot {
 export interface AvailableSlot {
   time: string; // ISO string
   endTime: string; // ISO string
+}
+
+function resolveScheduleForEventType(et: any) {
+  if (et.availabilityScheduleId) {
+    const assignedSchedule = availabilitySchedules().findById(et.availabilityScheduleId);
+    if (assignedSchedule) return assignedSchedule;
+  }
+
+  const existingSchedule = availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } })
+    || availabilitySchedules().findFirst({ where: { userId: et.userId } });
+
+  if (existingSchedule) return existingSchedule;
+
+  const user = users().findById(et.userId);
+  return ensureDefaultAvailabilitySchedule(et.userId, user?.timezone || 'America/New_York');
 }
 
 export function getAvailabilityForDate(
@@ -50,9 +66,7 @@ export async function generateTimeSlots(
   const et = eventTypes().findById(eventTypeId);
   if (!et || !et.isActive) return [];
 
-  const schedule = et.availabilityScheduleId
-    ? availabilitySchedules().findById(et.availabilityScheduleId)
-    : availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } });
+  const schedule = resolveScheduleForEventType(et);
 
   if (!schedule) return [];
 
@@ -158,9 +172,7 @@ export async function getAvailableDates(
   const et = eventTypes().findById(eventTypeId);
   if (!et) return [];
 
-  const schedule = et.availabilityScheduleId
-    ? availabilitySchedules().findById(et.availabilityScheduleId)
-    : availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } });
+  const schedule = resolveScheduleForEventType(et);
 
   if (!schedule) return [];
 
