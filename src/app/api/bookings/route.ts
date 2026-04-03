@@ -350,6 +350,7 @@ export async function POST(req: NextRequest) {
         content: Buffer.from(icsInvite, 'utf-8').toString('base64'),
         contentType: 'text/calendar; method=REQUEST; charset=UTF-8',
       };
+      const shouldAttachCalendarInvite = !googleCalendarInviteUrl;
       const confirmEmail = bookingConfirmationEmail({
         inviteeName,
         hostName: host.name,
@@ -364,7 +365,9 @@ export async function POST(req: NextRequest) {
         rescheduleUrl: `${appUrl}/booking/${bookingRecord.uid}/reschedule?token=${bookingRecord.rescheduleToken}`,
       });
       confirmEmail.to = inviteeEmail;
-      confirmEmail.attachments = [calendarInviteAttachment];
+      if (shouldAttachCalendarInvite) {
+        confirmEmail.attachments = [calendarInviteAttachment];
+      }
       const confirmEmailPromise = sendEmail(confirmEmail);
 
       // Send notification to host
@@ -381,7 +384,9 @@ export async function POST(req: NextRequest) {
         calendarInviteUrl: googleCalendarInviteUrl,
       });
       hostEmail.to = host.email;
-      hostEmail.attachments = [calendarInviteAttachment];
+      if (shouldAttachCalendarInvite) {
+        hostEmail.attachments = [calendarInviteAttachment];
+      }
       const hostEmailPromise = sendEmail(hostEmail);
 
       const [inviteeEmailResult, hostEmailResult] = await Promise.allSettled([
