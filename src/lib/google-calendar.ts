@@ -300,7 +300,9 @@ export function buildGoogleCalendarOAuthUrl(baseUrl: string, clientId: string) {
 }
 
 export function canWriteGoogleCalendar(calendar: Pick<ConnectedGoogleCalendar, 'accessRole'>) {
-  return ['owner', 'writer'].includes(calendar.accessRole);
+  // Older synced calendar records may not have stored accessRole yet.
+  // Treat those as potentially writable and let the Google API enforce permissions.
+  return !calendar.accessRole || ['owner', 'writer'].includes(calendar.accessRole);
 }
 
 async function refreshGoogleAccessToken(calendar: ConnectedGoogleCalendar) {
@@ -731,9 +733,34 @@ export async function hasGoogleCalendarConflict(
 }
 
 export function getGoogleAddToCalendar(userId: string) {
-  return getAllConnectedGoogleCalendars(userId).find((calendar) => (
-    calendar.addEventsTo && canWriteGoogleCalendar(calendar)
-  )) || null;
+  const calendars = getAllConnectedGoogleCalendars(userId);
+  if (calendars.length === 0) {
+    return null;
+  }
+
+  const writableCalendars = calendars.filter((calendar) => canWriteGoogleCalendar(calendar));
+  const selected = writableCalendars.find((calendar) => calendar.addEventsTo)
+    || writableCalendars.find((calendar) => calendar.isPrimary)
+    || writableCalendars[0]
+    || calendars.find((calendar) => calendar.addEventsTo)
+    || calendars.find((calendar) => calendar.isPrimary)
+    || calendars[0]
+    || null;
+
+  if (!selected) {
+    return null;
+  }
+
+  if (!selected.addEventsTo) {
+    connectedCalendars().updateMany({ userId, provider: 'google' }, { addEventsTo: false });
+    const updated = connectedCalendars().update(selected.id, { addEventsTo: true });
+    return normalizeGoogleCalendar((updated as RawConnectedGoogleCalendar) || {
+      ...selected,
+      addEventsTo: true,
+    });
+  }
+
+  return selected;
 }
 
 function buildGoogleEventDescription(params: {
@@ -869,6 +896,12 @@ export async function createGoogleCalendarEventForBooking(params: {
     || looksLikeMeet(eventType.locationValue);
   const calendar = getGoogleAddToCalendar(booking.hostId);
   if (!calendar) {
+    console.warn('No Google booking calendar available for booking', {
+      bookingId: booking.id,
+      hostId: booking.hostId,
+      wantsGoogleMeet,
+      locationType: booking.locationType || eventType.locationType,
+    });
     return null;
   }
 

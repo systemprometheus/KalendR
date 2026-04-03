@@ -62,17 +62,22 @@ export default function IntegrationsPage() {
     });
   }, []);
 
+  const hasGoogleBookingCalendar = connectedCalendars.some((calendar: any) => (
+    calendar.provider === 'google' && calendar.addEventsTo
+  ));
+
   const handleConnect = async (provider: string) => {
+    const resolvedProvider = provider === 'google_meet' ? 'google' : provider;
     setConnecting(provider);
     try {
       // Calendar providers use the calendars endpoint, others use the connect endpoint
-      const isCalendar = ['google', 'microsoft'].includes(provider);
+      const isCalendar = ['google', 'microsoft'].includes(resolvedProvider);
       const endpoint = isCalendar ? '/api/integrations/calendars' : '/api/integrations/connect';
 
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider }),
+        body: JSON.stringify({ provider: resolvedProvider }),
       });
 
       const data = await res.json();
@@ -96,6 +101,7 @@ export default function IntegrationsPage() {
   };
 
   const isConnected = (provider: string) => {
+    if (provider === 'google_meet') return hasGoogleBookingCalendar;
     // Check calendars for google/microsoft
     if (connectedCalendars.some(c => c.provider === provider)) return true;
     // Check general integrations for others
@@ -152,14 +158,17 @@ export default function IntegrationsPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Connected Calendars</h2>
           <div className="space-y-3">
             {connectedCalendars.map(cal => (
-              <div key={cal.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-500" />
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{cal.email}</p>
-                  <p className="text-sm text-gray-500 capitalize">{cal.provider}</p>
+                <div key={cal.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{cal.email}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <p className="text-sm text-gray-500 capitalize">{cal.provider}</p>
+                      {cal.addEventsTo && <Badge>Booking calendar</Badge>}
+                    </div>
+                  </div>
+                  <Badge variant="success">Connected</Badge>
                 </div>
-                <Badge variant="success">Connected</Badge>
-              </div>
             ))}
           </div>
         </Card>
