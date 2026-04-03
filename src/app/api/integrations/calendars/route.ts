@@ -108,3 +108,95 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const { user } = await requireAuthWithScopes(['calendars:write']);
+    const {
+      calendarId,
+      addEventsTo,
+      checkForConflicts,
+    } = await req.json();
+
+    if (!calendarId || typeof calendarId !== 'string') {
+      return NextResponse.json({ error: 'calendarId is required' }, { status: 400 });
+    }
+
+    const calendar = connectedCalendars().findById(calendarId);
+    if (!calendar || calendar.userId !== user.id) {
+      return NextResponse.json({ error: 'Calendar not found' }, { status: 404 });
+    }
+
+    const updates: Record<string, boolean> = {};
+
+    if (typeof checkForConflicts === 'boolean') {
+      updates.checkForConflicts = checkForConflicts;
+    }
+
+    if (typeof addEventsTo === 'boolean') {
+      if (!calendar.provider || calendar.provider !== 'google') {
+        return NextResponse.json(
+          { error: 'Booking calendar selection is currently supported for Google calendars only' },
+          { status: 400 },
+        );
+      }
+
+      if (addEventsTo) {
+        connectedCalendars().updateMany(
+          { userId: user.id, provider: calendar.provider },
+          { addEventsTo: false },
+        );
+        updates.addEventsTo = true;
+      } else {
+        const otherBookingCalendar = connectedCalendars().findMany({
+          where: { userId: user.id, provider: calendar.provider, addEventsTo: true },
+        }).find((item: any) => item.id !== calendar.id);
+
+        if (!otherBookingCalendar) {
+          return NextResponse.json(
+            { error: 'At least one Google calendar must remain selected to receive booking events' },
+            { status: 400 },
+          );
+        }
+
+        updates.addEventsTo = false;
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: 'No valid updates provided' }, { status: 400 });
+    }
+
+    const updated = connectedCalendars().update(calendar.id, updates);
+    if (!updated) {
+      return NextResponse.json({ error: 'Failed to update calendar' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      calendar: {
+        id: updated.id,
+        provider: updated.provider,
+        email: updated.email,
+        accountEmail: updated.accountEmail || updated.email,
+        accountExternalId: updated.accountExternalId || '',
+        calendarId: updated.calendarId || '',
+        calendarName: updated.calendarName || '',
+        accessRole: updated.accessRole || '',
+        checkForConflicts: updated.checkForConflicts,
+        addEventsTo: updated.addEventsTo,
+        isPrimary: updated.isPrimary,
+        watchExpiration: updated.watchExpiration || '',
+        watchLastWebhookAt: updated.watchLastWebhookAt || '',
+        createdAt: updated.createdAt,
+      },
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden:')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

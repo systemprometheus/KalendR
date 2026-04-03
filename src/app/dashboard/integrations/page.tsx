@@ -62,6 +62,15 @@ export default function IntegrationsPage() {
     });
   }, []);
 
+  const refreshIntegrations = async () => {
+    const [calData, intData] = await Promise.all([
+      fetch('/api/integrations/calendars').then(r => r.json()),
+      fetch('/api/integrations/status').then(r => r.json()).catch(() => ({ integrations: [] })),
+    ]);
+    setConnectedCalendars(calData.calendars || []);
+    setConnectedIntegrations(intData.integrations || []);
+  };
+
   const hasGoogleBookingCalendar = connectedCalendars.some((calendar: any) => (
     calendar.provider === 'google' && calendar.addEventsTo
   ));
@@ -97,6 +106,27 @@ export default function IntegrationsPage() {
       setToast({ type: 'error', message: 'Failed to start connection. Please try again.' });
     } finally {
       setConnecting(null);
+    }
+  };
+
+  const updateCalendarSettings = async (calendarId: string, updates: Record<string, boolean>) => {
+    try {
+      const res = await fetch('/api/integrations/calendars', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calendarId, ...updates }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setToast({ type: 'error', message: data.error || 'Failed to update calendar settings' });
+        return;
+      }
+
+      await refreshIntegrations();
+      setToast({ type: 'success', message: 'Calendar settings updated' });
+    } catch {
+      setToast({ type: 'error', message: 'Failed to update calendar settings' });
     }
   };
 
@@ -158,19 +188,51 @@ export default function IntegrationsPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Connected Calendars</h2>
           <div className="space-y-3">
             {connectedCalendars.map(cal => (
-                <div key={cal.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
+              <div key={cal.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="mt-0.5 h-5 w-5 text-green-500" />
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900">{cal.email}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <p className="text-sm text-gray-500 capitalize">{cal.provider}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-gray-900">
+                        {cal.calendarName || cal.email}
+                      </p>
+                      <Badge variant="success">Connected</Badge>
+                      {cal.isPrimary && <Badge variant="info">Primary</Badge>}
                       {cal.addEventsTo && <Badge>Booking calendar</Badge>}
+                      {cal.checkForConflicts && <Badge variant="warning">Conflict checks</Badge>}
                     </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                      <span className="capitalize">{cal.provider}</span>
+                      <span>{cal.accountEmail || cal.email}</span>
+                      {cal.calendarId && <span className="truncate">{cal.calendarId}</span>}
+                    </div>
+                    {cal.provider === 'google' && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant={cal.addEventsTo ? 'primary' : 'outline'}
+                          onClick={() => updateCalendarSettings(cal.id, { addEventsTo: true })}
+                        >
+                          {cal.addEventsTo ? 'Receives bookings' : 'Use for bookings'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={cal.checkForConflicts ? 'secondary' : 'outline'}
+                          onClick={() => updateCalendarSettings(cal.id, { checkForConflicts: !cal.checkForConflicts })}
+                        >
+                          {cal.checkForConflicts ? 'Conflict checks on' : 'Enable conflict checks'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <Badge variant="success">Connected</Badge>
                 </div>
+              </div>
             ))}
           </div>
+          <p className="mt-4 text-sm text-gray-600">
+            The Google calendar marked as <span className="font-medium text-gray-900">Booking calendar</span>
+            {' '}is where KalendR creates booking events and requests Google Meet links.
+          </p>
         </Card>
       )}
 
