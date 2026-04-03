@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { connectedCalendars } from '@/lib/db';
-import { buildGoogleCalendarOAuthUrl, ensureGoogleCalendarWatches } from '@/lib/google-calendar';
+import {
+  buildGoogleCalendarOAuthUrl,
+  ensureGoogleCalendarWatches,
+  recoverGoogleCalendarConnection,
+} from '@/lib/google-calendar';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    await recoverGoogleCalendarConnection(user.id).catch((error) => {
+      console.error('Failed to recover Google Calendar connection', error);
+    });
 
     await ensureGoogleCalendarWatches(user.id).catch((error) => {
       console.error('Failed to ensure Google Calendar watches', error);
