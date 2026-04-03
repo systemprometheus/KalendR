@@ -1,10 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus, Copy, ExternalLink, MoreVertical, Pencil, Trash2, ToggleLeft, ToggleRight, LayoutGrid, Users, RefreshCw, UserCheck, Archive, Search, Link2, HelpCircle, ChevronDown } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Plus, Copy, ExternalLink, MoreVertical, Pencil, ToggleLeft, ToggleRight, LayoutGrid, Archive, Search, Link2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -42,25 +40,28 @@ const KIND_LABELS: Record<string, string> = {
   collective: 'Collective',
 };
 
+const DEFAULT_FORM = {
+  title: '', slug: '', description: '', duration: 30, color: '#03b2d1',
+  locationType: 'google_meet', locationValue: '', eventTypeKind: 'one_on_one',
+  minNotice: 240, maxFutureDays: 60, bufferBefore: 0, bufferAfter: 0,
+  slotInterval: 0, dailyLimit: 0, confirmationMessage: '',
+};
+
 export default function EventTypesPage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [eventTypes, setEventTypes] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('event_types');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Form state
-  const [form, setForm] = useState({
-    title: '', slug: '', description: '', duration: 30, color: '#03b2d1',
-    locationType: 'google_meet', locationValue: '', eventTypeKind: 'one_on_one',
-    minNotice: 240, maxFutureDays: 60, bufferBefore: 0, bufferAfter: 0,
-    slotInterval: 0, dailyLimit: 0, confirmationMessage: '',
-  });
+  const [form, setForm] = useState({ ...DEFAULT_FORM });
 
   const loadData = () => {
     Promise.all([
@@ -75,12 +76,28 @@ export default function EventTypesPage() {
 
   useEffect(() => { loadData(); }, []);
 
-  const resetForm = () => setForm({
-    title: '', slug: '', description: '', duration: 30, color: '#03b2d1',
-    locationType: 'google_meet', locationValue: '', eventTypeKind: 'one_on_one',
-    minNotice: 240, maxFutureDays: 60, bufferBefore: 0, bufferAfter: 0,
-    slotInterval: 0, dailyLimit: 0, confirmationMessage: '',
-  });
+  const resetForm = () => setForm({ ...DEFAULT_FORM });
+
+  useEffect(() => {
+    if (searchParams.get('create') !== 'true') return;
+
+    setEditingId(null);
+    setForm({ ...DEFAULT_FORM });
+    setShowCreate(true);
+  }, [searchParams]);
+
+  const closeModal = () => {
+    setShowCreate(false);
+    setEditingId(null);
+    resetForm();
+
+    if (searchParams.get('create') !== 'true') return;
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete('create');
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+  };
 
   const handleCreate = async () => {
     const res = await fetch('/api/event-types', {
@@ -93,8 +110,7 @@ export default function EventTypesPage() {
       }),
     });
     if (res.ok) {
-      setShowCreate(false);
-      resetForm();
+      closeModal();
       loadData();
     }
   };
@@ -111,8 +127,7 @@ export default function EventTypesPage() {
       }),
     });
     if (res.ok) {
-      setEditingId(null);
-      resetForm();
+      closeModal();
       loadData();
     }
   };
@@ -161,12 +176,6 @@ export default function EventTypesPage() {
     et.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const tabs = [
-    { id: 'event_types', label: 'Event types' },
-    { id: 'single_use', label: 'Single-use links' },
-    { id: 'polls', label: 'Meeting polls' },
-  ];
-
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="animate-spin-slow w-8 h-8 border-2 border-[#03b2d1] border-t-transparent rounded-full" /></div>;
   }
@@ -179,33 +188,10 @@ export default function EventTypesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Scheduling</h1>
           <HelpCircle className="w-4 h-4 text-gray-400 cursor-help" />
         </div>
-        <Button onClick={() => { resetForm(); setShowCreate(true); }} className="gap-2">
+        <Button onClick={() => { setEditingId(null); resetForm(); setShowCreate(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Create
-          <ChevronDown className="w-3 h-3 ml-1" />
         </Button>
       </div>
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <div className="flex gap-6">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-[#03b2d1] text-[#03b2d1]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {activeTab === 'event_types' && (
-        <>
           {/* Search */}
           <div className="relative mb-6 max-w-lg">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -247,7 +233,7 @@ export default function EventTypesPage() {
               icon={<LayoutGrid className="w-12 h-12" />}
               title="No event types yet"
               description="Create your first event type to start accepting bookings from prospects and leads."
-              action={{ label: 'Create Event Type', onClick: () => { resetForm(); setShowCreate(true); } }}
+              action={{ label: 'Create Event Type', onClick: () => { setEditingId(null); resetForm(); setShowCreate(true); } }}
             />
           ) : filteredEventTypes.length === 0 ? (
             <div className="text-center py-12 text-gray-500 text-sm">No event types match your search.</div>
@@ -325,33 +311,10 @@ export default function EventTypesPage() {
               ))}
             </div>
           )}
-        </>
-      )}
-
-      {activeTab === 'single_use' && (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto mb-4 bg-blue-50 rounded-full flex items-center justify-center">
-            <Link2 className="w-8 h-8 text-[#03b2d1]" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Single-use links</h3>
-          <p className="text-sm text-gray-500 max-w-md mx-auto">Create one-time booking links that expire after use. Perfect for high-touch prospect outreach.</p>
-        </div>
-      )}
-
-      {activeTab === 'polls' && (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto mb-4 bg-blue-50 rounded-full flex items-center justify-center">
-            <Users className="w-8 h-8 text-[#03b2d1]" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Meeting polls</h3>
-          <p className="text-sm text-gray-500 max-w-md mx-auto">Let participants vote on the best time to meet. Great for group meetings and team scheduling.</p>
-        </div>
-      )}
-
       {/* Create / Edit Modal */}
       <Modal
         isOpen={showCreate || !!editingId}
-        onClose={() => { setShowCreate(false); setEditingId(null); resetForm(); }}
+        onClose={closeModal}
         title={editingId ? 'Edit Event Type' : 'New Event Type'}
         size="lg"
       >
@@ -406,7 +369,7 @@ export default function EventTypesPage() {
           </details>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-            <Button variant="outline" onClick={() => { setShowCreate(false); setEditingId(null); resetForm(); }}>Cancel</Button>
+            <Button variant="outline" onClick={closeModal}>Cancel</Button>
             <Button onClick={editingId ? handleUpdate : handleCreate}>
               {editingId ? 'Save Changes' : 'Create Event Type'}
             </Button>

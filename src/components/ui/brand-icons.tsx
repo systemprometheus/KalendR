@@ -20,7 +20,7 @@ function AssetBrandIcon({
 }
 
 export function GoogleCalendarIcon({ className = 'w-6 h-6' }: { className?: string }) {
-  return <AssetBrandIcon alt="Google Calendar" src="/integrations/google-calendar.png" className={className} />;
+  return <AssetBrandIcon alt="Google Calendar" src="/integrations/google-calendar-official.png" className={className} />;
 }
 
 export function MicrosoftOutlookIcon({ className = 'w-6 h-6' }: { className?: string }) {
@@ -32,7 +32,7 @@ export function ZoomIcon({ className = 'w-6 h-6' }: { className?: string }) {
 }
 
 export function GoogleMeetIcon({ className = 'w-6 h-6' }: { className?: string }) {
-  return <AssetBrandIcon alt="Google Meet" src="/integrations/google-meet.png" className={className} />;
+  return <AssetBrandIcon alt="Google Meet" src="/integrations/google-meet-official.svg" className={className} />;
 }
 
 export function StripeIcon({ className = 'w-6 h-6' }: { className?: string }) {

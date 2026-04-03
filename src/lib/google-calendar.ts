@@ -1,5 +1,6 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import { bookings, connectedCalendars } from './db';
+import { getJwtSecret } from './auth';
 import type { Booking, ConnectedCalendar, EventType, User } from './types';
 
 type RawConnectedGoogleCalendar = ConnectedCalendar & {
@@ -88,7 +89,7 @@ export const GOOGLE_CALENDAR_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ');
 
-const GOOGLE_INTERNAL_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-production-min32chars';
+const GOOGLE_INTERNAL_SECRET = getJwtSecret();
 const GOOGLE_WATCH_RENEW_WINDOW_MS = 24 * 60 * 60 * 1000;
 const GOOGLE_WATCH_REQUEST_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const GOOGLE_WATCH_CURSOR_LOOKBACK_MS = 5 * 60 * 1000;
