@@ -63,6 +63,7 @@ export default function AvailabilityPage() {
       body: JSON.stringify({
         name: scheduleName,
         timezone,
+        isDefault: true,
         rules: rules.filter(r => r.isEnabled).map(r => ({
           dayOfWeek: r.dayOfWeek,
           startTime: r.startTime,

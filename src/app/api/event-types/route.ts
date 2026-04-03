@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { eventTypes, eventTypeHosts, users } from '@/lib/db';
+import { ensureDefaultAvailabilitySchedule } from '@/lib/default-availability';
 
 export async function GET(req: NextRequest) {
   try {
@@ -39,6 +40,10 @@ export async function POST(req: NextRequest) {
       finalSlug = `${finalSlug}-${Math.random().toString(36).substring(2, 6)}`;
     }
 
+    const schedule = availabilityScheduleId
+      ? null
+      : ensureDefaultAvailabilitySchedule(user.id, user.timezone || 'America/New_York');
+
     const et = eventTypes().create({
       title,
       slug: finalSlug,
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
       weeklyLimit: weeklyLimit || null,
       maxInvitees: maxInvitees ?? 1,
       roundRobinMode: roundRobinMode || null,
-      availabilityScheduleId: availabilityScheduleId || null,
+      availabilityScheduleId: availabilityScheduleId || schedule?.id || null,
       customQuestions: customQuestions ? JSON.stringify(customQuestions) : null,
       confirmationMessage: confirmationMessage || null,
       redirectUrl: redirectUrl || null,

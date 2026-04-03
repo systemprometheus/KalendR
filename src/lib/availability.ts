@@ -1,7 +1,8 @@
-import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts } from './db';
+import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts, users } from './db';
 import { addMinutes, startOfDay, endOfDay, format, parse, isAfter, isBefore, addDays, eachDayOfInterval, setHours, setMinutes } from 'date-fns';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { getGoogleCalendarBusyIntervals, hasBusyIntervalConflict, hasGoogleCalendarConflict, type BusyInterval } from './google-calendar';
+import { ensureDefaultAvailabilitySchedule } from './default-availability';
 
 export interface TimeSlot {
   start: Date;
@@ -11,6 +12,37 @@ export interface TimeSlot {
 export interface AvailableSlot {
   time: string; // ISO string
   endTime: string; // ISO string
+}
+
+function resolveScheduleForEventType(et: any) {
+  const schedules = availabilitySchedules().findMany({
+    where: { userId: et.userId },
+    orderBy: { updatedAt: 'desc' },
+  });
+
+  const schedulesWithRules = schedules.map(schedule => ({
+    schedule,
+    enabledRuleCount: availabilityRules().count({
+      scheduleId: schedule.id,
+      isEnabled: true,
+    }),
+  }));
+
+  const assignedSchedule = et.availabilityScheduleId
+    ? schedulesWithRules.find(({ schedule }) => schedule.id === et.availabilityScheduleId)
+    : null;
+
+  const preferredSchedule = schedulesWithRules.find(({ schedule, enabledRuleCount }) => schedule.isDefault && enabledRuleCount > 0)
+    || (assignedSchedule && assignedSchedule.enabledRuleCount > 0 ? assignedSchedule : null)
+    || schedulesWithRules.find(({ enabledRuleCount }) => enabledRuleCount > 0)
+    || null;
+
+  if (preferredSchedule) return preferredSchedule.schedule;
+  if (assignedSchedule) return assignedSchedule.schedule;
+  if (schedules[0]) return schedules[0];
+
+  const user = users().findById(et.userId);
+  return ensureDefaultAvailabilitySchedule(et.userId, user?.timezone || 'America/New_York');
 }
 
 export function getAvailabilityForDate(
@@ -50,9 +82,7 @@ export async function generateTimeSlots(
   const et = eventTypes().findById(eventTypeId);
   if (!et || !et.isActive) return [];
 
-  const schedule = et.availabilityScheduleId
-    ? availabilitySchedules().findById(et.availabilityScheduleId)
-    : availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } });
+  const schedule = resolveScheduleForEventType(et);
 
   if (!schedule) return [];
 
@@ -158,9 +188,7 @@ export async function getAvailableDates(
   const et = eventTypes().findById(eventTypeId);
   if (!et) return [];
 
-  const schedule = et.availabilityScheduleId
-    ? availabilitySchedules().findById(et.availabilityScheduleId)
-    : availabilitySchedules().findFirst({ where: { userId: et.userId, isDefault: true } });
+  const schedule = resolveScheduleForEventType(et);
 
   if (!schedule) return [];
 

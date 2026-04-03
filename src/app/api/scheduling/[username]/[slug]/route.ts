@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { users, eventTypes, availabilitySchedules } from '@/lib/db';
+import { users, eventTypes, availabilitySchedules, availabilityRules } from '@/lib/db';
 import { generateTimeSlots, getAvailableDates } from '@/lib/availability';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ username: string; slug: string }> }) {
   try {
@@ -18,10 +21,38 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
     }
 
     // Find event type
-    const et = eventTypes().findFirst({ where: { userId: user.id, slug, isActive: true, isArchived: false } });
-    if (!et) {
+    const foundEventType = eventTypes().findFirst({ where: { userId: user.id, slug, isActive: true, isArchived: false } });
+    if (!foundEventType) {
       return NextResponse.json({ error: 'Event type not found' }, { status: 404 });
     }
+
+    // Availability is configured globally today. Public booking pages should use the user's
+    // active schedule with real enabled hours instead of a stale event-level schedule link.
+    const schedules = availabilitySchedules().findMany({
+      where: { userId: user.id },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const schedulesWithRules = schedules.map(schedule => ({
+      schedule,
+      enabledRuleCount: availabilityRules().count({
+        scheduleId: schedule.id,
+        isEnabled: true,
+      }),
+    }));
+
+    const assignedSchedule = foundEventType.availabilityScheduleId
+      ? schedulesWithRules.find(({ schedule }) => schedule.id === foundEventType.availabilityScheduleId)
+      : null;
+
+    const preferredSchedule = schedulesWithRules.find(({ schedule, enabledRuleCount }) => schedule.isDefault && enabledRuleCount > 0)
+      || (assignedSchedule && assignedSchedule.enabledRuleCount > 0 ? assignedSchedule : null)
+      || schedulesWithRules.find(({ enabledRuleCount }) => enabledRuleCount > 0)
+      || null;
+
+    const et = preferredSchedule && foundEventType.availabilityScheduleId !== preferredSchedule.schedule.id
+      ? eventTypes().update(foundEventType.id, { availabilityScheduleId: preferredSchedule.schedule.id }) || foundEventType
+      : foundEventType;
 
     // Get custom questions
     let customQuestions = [];
