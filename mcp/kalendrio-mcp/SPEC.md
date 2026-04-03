@@ -34,7 +34,12 @@ Requires one of:
 - `KALENDRIO_BEARER_TOKEN`
 - `KALENDRIO_SESSION_COOKIE`
 
+Hosted HTTP clients may also pass:
+- `Authorization: Bearer <kalendrio_agent_token>`
+- `Cookie: session=<kalendrio_session_cookie>`
+
 Applies to:
+- `get_authenticated_profile`
 - `list_bookings`
 - `get_booking`
 - `cancel_booking`
@@ -202,6 +207,29 @@ Input:
 {
   "status": "confirmed",
   "period": "upcoming"
+}
+```
+
+### `get_authenticated_profile`
+Purpose: confirm which Kalendrio user and organization the current authenticated MCP session is operating as.
+
+Input:
+```json
+{}
+```
+
+Output shape:
+```json
+{
+  "user": {
+    "id": "user_123",
+    "email": "sarah@example.com",
+    "name": "Sarah Chen"
+  },
+  "organization": {
+    "id": "org_123",
+    "name": "Kalendrio"
+  }
 }
 ```
 

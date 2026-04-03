@@ -5,6 +5,23 @@ import { formatJsonResult, formatToolError } from '../lib/tool-utils.js';
 
 export function registerHostTools(server: McpServer, client: KalendrioClient) {
   server.registerTool(
+    'get_authenticated_profile',
+    {
+      title: 'Get Authenticated Profile',
+      description: 'Show which Kalendrio user and organization the authenticated MCP session is operating as.',
+      inputSchema: {},
+    },
+    async () => {
+      try {
+        const response = await client.getCurrentProfile();
+        return formatJsonResult(response, 'Loaded authenticated Kalendrio profile.');
+      } catch (error) {
+        return formatToolError(error, 'Unable to load the authenticated profile.');
+      }
+    },
+  );
+
+  server.registerTool(
     'list_bookings',
     {
       title: 'List Bookings',

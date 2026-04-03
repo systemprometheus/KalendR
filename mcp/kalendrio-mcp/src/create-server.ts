@@ -48,6 +48,7 @@ export function createKalendrioMcpServer(config: KalendrioConfig) {
                 'create_booking',
               ],
               authenticatedTools: [
+                'get_authenticated_profile',
                 'list_bookings',
                 'get_booking',
                 'cancel_booking',

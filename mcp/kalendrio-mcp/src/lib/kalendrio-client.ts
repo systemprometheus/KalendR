@@ -1,4 +1,5 @@
 import { loadConfig, type KalendrioConfig } from './config.js';
+import { getKalendrioRequestAuth } from './request-auth.js';
 
 export type RequestOptions = {
   authRequired?: boolean;
@@ -34,7 +35,12 @@ export class KalendrioClient {
   }
 
   hasAuth() {
-    return Boolean(this.config.KALENDRIO_SESSION_COOKIE || this.config.KALENDRIO_BEARER_TOKEN);
+    const auth = this.resolveAuth();
+    return Boolean(auth.sessionCookie || auth.bearerToken);
+  }
+
+  async getCurrentProfile() {
+    return this.request('/api/auth/me', undefined, { authRequired: true });
   }
 
   async getPublicEventType(username: string, slug: string) {
@@ -121,16 +127,17 @@ export class KalendrioClient {
   }
 
   private async request(path: string, init?: RequestInit, options?: RequestOptions) {
+    const auth = this.resolveAuth();
     const headers = new Headers(init?.headers ?? {});
     headers.set('accept', 'application/json');
     headers.set('user-agent', this.config.KALENDRIO_USER_AGENT);
 
-    if (this.config.KALENDRIO_SESSION_COOKIE) {
-      headers.set('cookie', this.config.KALENDRIO_SESSION_COOKIE);
+    if (auth.sessionCookie) {
+      headers.set('cookie', auth.sessionCookie);
     }
 
-    if (this.config.KALENDRIO_BEARER_TOKEN) {
-      headers.set('authorization', `Bearer ${this.config.KALENDRIO_BEARER_TOKEN}`);
+    if (auth.bearerToken) {
+      headers.set('authorization', `Bearer ${auth.bearerToken}`);
     }
 
     if (options?.authRequired && !this.hasAuth()) {
@@ -150,6 +157,14 @@ export class KalendrioClient {
     }
 
     return data;
+  }
+
+  private resolveAuth() {
+    const requestAuth = getKalendrioRequestAuth();
+    return {
+      bearerToken: requestAuth?.bearerToken || this.config.KALENDRIO_BEARER_TOKEN,
+      sessionCookie: requestAuth?.sessionCookie || this.config.KALENDRIO_SESSION_COOKIE,
+    };
   }
 }
 
