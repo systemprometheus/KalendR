@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { requireAuthWithScopes } from '@/lib/auth';
 import { organizations } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
+    const { user } = await requireAuthWithScopes(['profile:read']);
 
     let org = null;
     if (user.organizationId) {
@@ -20,6 +17,12 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ user, organization: org });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden:')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

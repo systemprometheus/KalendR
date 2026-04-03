@@ -198,3 +198,17 @@ export interface ConnectedCalendar {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface AgentToken {
+  id: string;
+  userId: string;
+  name: string;
+  tokenHash: string;
+  tokenPreview: string;
+  scopes?: string[];
+  lastUsedAt?: string;
+  expiresAt?: string;
+  revokedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}

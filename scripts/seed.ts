@@ -51,6 +51,7 @@ async function seed() {
   const collections = [
     'users',
     'sessions',
+    'agent_tokens',
     'password_resets',
     'organizations',
     'teams',

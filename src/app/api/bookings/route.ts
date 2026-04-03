@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { randomUUID } from 'crypto';
+import { requireAuthWithScopes } from '@/lib/auth';
 import { bookings, eventTypes, users } from '@/lib/db';
 import { generateTimeSlots, selectRoundRobinHost, checkCollectiveAvailability } from '@/lib/availability';
 import { sendEmail, bookingConfirmationEmail, hostNotificationEmail } from '@/lib/email';
@@ -99,8 +100,7 @@ function normalizeHttpUrl(value?: string | null) {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { user } = await requireAuthWithScopes(['bookings:read']);
 
     await ensureGoogleCalendarWatches(user.id).catch((error) => {
       console.error('Failed to ensure Google Calendar watches', error);
@@ -130,6 +130,12 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ bookings: enriched });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden:')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -209,7 +215,7 @@ export async function POST(req: NextRequest) {
     }
 
     const booking = bookings().create({
-      uid: Math.random().toString(36).substring(2) + Date.now().toString(36),
+      uid: randomUUID(),
       eventTypeId,
       hostId,
       startTime: start.toISOString(),
@@ -227,8 +233,8 @@ export async function POST(req: NextRequest) {
       locationValue,
       meetingUrl,
       source: source || 'booking_page',
-      cancelToken: Math.random().toString(36).substring(2) + Date.now().toString(36),
-      rescheduleToken: Math.random().toString(36).substring(2) + Date.now().toString(36),
+      cancelToken: randomUUID(),
+      rescheduleToken: randomUUID(),
     });
 
     const host = users().findById(hostId);

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { randomBytes } from 'crypto';
+import { requireAuthWithScopes } from '@/lib/auth';
 import { eventTypes, eventTypeHosts, users } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { user } = await requireAuthWithScopes(['event-types:read']);
 
     const items = eventTypes().findMany({
       where: { userId: user.id, isArchived: false },
@@ -14,14 +14,19 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ eventTypes: items });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden:')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { user } = await requireAuthWithScopes(['event-types:write']);
 
     const body = await req.json();
     const { title, slug, description, duration, locationType, locationValue, color, eventTypeKind,
@@ -36,7 +41,7 @@ export async function POST(req: NextRequest) {
     let finalSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const existing = eventTypes().findFirst({ where: { userId: user.id, slug: finalSlug } });
     if (existing) {
-      finalSlug = `${finalSlug}-${Math.random().toString(36).substring(2, 6)}`;
+      finalSlug = `${finalSlug}-${randomBytes(3).toString('hex')}`;
     }
 
     const et = eventTypes().create({
@@ -86,6 +91,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ eventType: et }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden:')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error('Create event type error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

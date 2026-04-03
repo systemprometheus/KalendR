@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "kalendrio": {
+      "command": "npm",
+      "args": ["run", "dev", "--prefix", "/Users/0xpyre/KalendR/mcp/kalendrio-mcp"],
+      "env": {
+        "KALENDRIO_BASE_URL": "http://127.0.0.1:3010",
+        "KALENDRIO_BEARER_TOKEN": "paste_agent_token_here"
+      }
+    }
+  }
+}

@@ -15,6 +15,7 @@ export default function LandingPage() {
               <a href="#features" className="text-sm text-gray-600 hover:text-gray-900">Features</a>
               <a href="#how-it-works" className="text-sm text-gray-600 hover:text-gray-900">How It Works</a>
               <a href="#pricing" className="text-sm text-gray-600 hover:text-gray-900">Pricing</a>
+              <Link href="/mcp" className="text-sm text-gray-600 hover:text-gray-900">Agents</Link>
             </div>
             <div className="flex items-center gap-3">
               <Link href="/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2">
