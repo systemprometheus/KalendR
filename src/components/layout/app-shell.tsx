@@ -30,15 +30,17 @@ const bottomNav = [
 interface AppShellProps {
   children: React.ReactNode;
   user?: any;
+  currentPlan?: string;
 }
 
-export function AppShell({ children, user }: AppShellProps) {
+export function AppShell({ children, user, currentPlan = 'free' }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const helpActive = pathname === '/help' || pathname.startsWith('/dashboard/help');
+  const showUpgradeCta = currentPlan === 'free';
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -111,6 +113,18 @@ export function AppShell({ children, user }: AppShellProps) {
 
           {/* Bottom section */}
           <div className="border-t border-gray-100 px-2 py-2 space-y-0.5">
+            {showUpgradeCta && (
+              <Link
+                href="/dashboard/billing"
+                className={`mb-2 flex items-center justify-center gap-2 rounded-lg bg-[#03b2d1] px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#0298b3] ${
+                  collapsed ? 'px-0' : ''
+                }`}
+                aria-label="Upgrade"
+              >
+                <Zap className="w-4 h-4 flex-shrink-0" />
+                {!collapsed && 'Upgrade'}
+              </Link>
+            )}
             {bottomNav.map(item => {
               const active = isActive(item.href);
               return (
