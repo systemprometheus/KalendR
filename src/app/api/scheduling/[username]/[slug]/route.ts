@@ -12,13 +12,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
     const month = searchParams.get('month'); // 0-indexed
     const year = searchParams.get('year');
     const date = searchParams.get('date'); // YYYY-MM-DD for time slots
-    const timezone = searchParams.get('timezone') || 'America/New_York';
-
     // Find user by slug
     const user = users().findFirst({ where: { slug: username } });
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+    const timezone = searchParams.get('timezone') || user.timezone || 'America/New_York';
 
     // Find event type
     const foundEventType = eventTypes().findFirst({ where: { userId: user.id, slug, isActive: true, isArchived: false } });

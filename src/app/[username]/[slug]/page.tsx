@@ -11,6 +11,14 @@ interface PageProps {
 
 export default function BookingPage({ params }: PageProps) {
   const { username, slug } = use(params);
+  const detectTimezone = () => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return tz ? findMatchingTimezone(tz) : 'America/New_York';
+    } catch {
+      return 'America/New_York';
+    }
+  };
   const [step, setStep] = useState<'date' | 'time' | 'form' | 'confirmed'>('date');
   const [eventType, setEventType] = useState<any>(null);
   const [host, setHost] = useState<any>(null);
@@ -28,7 +36,7 @@ export default function BookingPage({ params }: PageProps) {
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   // Invitee timezone
-  const [timezone, setTimezone] = useState('America/New_York');
+  const [timezone, setTimezone] = useState(detectTimezone);
 
   // Booking form
   const [formData, setFormData] = useState<Record<string, string>>({
@@ -46,10 +54,7 @@ export default function BookingPage({ params }: PageProps) {
 
   // Detect timezone
   useEffect(() => {
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (tz) setTimezone(findMatchingTimezone(tz));
-    } catch {}
+    setTimezone(detectTimezone());
   }, []);
 
   // Load event type data

@@ -8,9 +8,9 @@ import {
   createGoogleCalendarEventForBooking,
   ensureGoogleCalendarEventForBooking,
   ensureGoogleCalendarWatches,
-  hasGoogleCalendarConflict,
 } from '@/lib/google-calendar';
 import { addMinutes, format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 
 function parseBookingMetadata(metadata?: string | null) {
   if (!metadata) return {};
@@ -242,33 +242,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check for double booking
-    const existingBookings = bookings().findMany({
-      where: { hostId, status: 'confirmed' },
-    }).filter((b: any) => {
-      const bStart = new Date(b.startTime);
-      const bEnd = new Date(b.endTime);
-      return start < bEnd && end > bStart;
-    });
+    const bookingTimezone = timezone || 'America/New_York';
+    const inviteeDate = formatInTimeZone(start, bookingTimezone, 'yyyy-MM-dd');
+    const bookableSlots = await generateTimeSlots(et.id, inviteeDate, bookingTimezone, undefined, hostId);
+    const isRequestedSlotAvailable = bookableSlots.some((slot) => slot.time === start.toISOString());
 
-    if (existingBookings.length > 0) {
+    if (!isRequestedSlotAvailable) {
       return NextResponse.json({ error: 'This time slot is no longer available' }, { status: 409 });
-    }
-
-    if (await hasGoogleCalendarConflict(hostId, start, end)) {
-      return NextResponse.json({ error: 'This time slot conflicts with the host calendar' }, { status: 409 });
-    }
-
-    // Check daily limit
-    if (et.dailyLimit) {
-      const dateStr = start.toISOString().substring(0, 10);
-      const dayBookings = bookings().findMany({
-        where: { eventTypeId, status: 'confirmed' },
-      }).filter((b: any) => b.startTime.substring(0, 10) === dateStr);
-
-      if (dayBookings.length >= et.dailyLimit) {
-        return NextResponse.json({ error: 'Daily booking limit reached' }, { status: 409 });
-      }
     }
 
     const looksLikeGoogleMeetPlaceholder = (value: string | null | undefined) => {
@@ -298,7 +278,7 @@ export async function POST(req: NextRequest) {
       hostId,
       startTime: start.toISOString(),
       endTime: end.toISOString(),
-      timezone: timezone || 'America/New_York',
+      timezone: bookingTimezone,
       status: bookingStatus,
       inviteeName,
       inviteeEmail,
@@ -385,7 +365,7 @@ export async function POST(req: NextRequest) {
         hostName: host.name,
         eventTitle: et.title,
         dateTime: dateTimeStr,
-        timezone: timezone || 'America/New_York',
+        timezone: bookingTimezone,
         duration: et.duration,
         location: emailLocation,
         meetingUrl: fallbackMeetingUrl,
@@ -406,7 +386,7 @@ export async function POST(req: NextRequest) {
         inviteeEmail,
         eventTitle: et.title,
         dateTime: dateTimeStr,
-        timezone: timezone || 'America/New_York',
+        timezone: bookingTimezone,
         duration: et.duration,
         location: emailLocation,
         meetingUrl: fallbackMeetingUrl,

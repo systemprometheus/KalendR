@@ -1,11 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AuthLayout } from '@/components/layout/auth-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { GoogleIcon, MicrosoftIcon } from '@/components/ui/brand-icons';
+import { findMatchingTimezone } from '@/lib/timezones';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -15,6 +16,16 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [timezone, setTimezone] = useState('America/New_York');
+
+  useEffect(() => {
+    try {
+      const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (detected) {
+        setTimezone(findMatchingTimezone(detected));
+      }
+    } catch {}
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +36,7 @@ export default function SignupPage() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, timezone }),
       });
 
       const data = await res.json();
@@ -44,7 +55,11 @@ export default function SignupPage() {
   };
 
   const handleOAuth = (provider: string) => {
-    window.location.href = `/api/auth/${provider}?intent=signup`;
+    const params = new URLSearchParams({
+      intent: 'signup',
+      timezone,
+    });
+    window.location.href = `/api/auth/${provider}?${params.toString()}`;
   };
 
   return (

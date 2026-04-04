@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { users } from '@/lib/db';
 import { createSession, generateSlug } from '@/lib/auth';
 import { ensureUserWorkspace } from '@/lib/default-user-setup';
+import { findMatchingTimezone } from '@/lib/timezones';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
@@ -10,6 +11,8 @@ export async function GET(req: NextRequest) {
   const intent = req.nextUrl.searchParams.get('state') === 'signup' ? 'signup' : 'login';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
   const tenantId = process.env.MICROSOFT_TENANT_ID || 'common';
+  const cookieStore = await cookies();
+  const signupTimezone = findMatchingTimezone(cookieStore.get('oauth_signup_timezone')?.value || 'America/New_York');
 
   if (error || !code) {
     return NextResponse.redirect(new URL('/login?error=Microsoft+authentication+cancelled', appUrl));
@@ -62,7 +65,7 @@ export async function GET(req: NextRequest) {
         name,
         slug: generateSlug(name),
         passwordHash: '',
-        timezone: 'America/New_York',
+        timezone: signupTimezone,
         plan: 'free',
         onboardingComplete: false,
         microsoftId: msUser.id,
@@ -77,7 +80,6 @@ export async function GET(req: NextRequest) {
     // Create session
     const sessionToken = await createSession(user.id);
 
-    const cookieStore = await cookies();
     cookieStore.set('session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -85,6 +87,7 @@ export async function GET(req: NextRequest) {
       maxAge: 30 * 24 * 60 * 60,
       path: '/',
     });
+    cookieStore.delete('oauth_signup_timezone');
 
     if (intent === 'signup' && (isNewUser || !user.onboardingComplete)) {
       return NextResponse.redirect(new URL('/onboarding', appUrl));

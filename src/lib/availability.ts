@@ -1,6 +1,6 @@
 import { availabilitySchedules, availabilityRules, availabilityOverrides, bookings, eventTypes, eventTypeHosts, users } from './db';
-import { addMinutes, startOfDay, endOfDay, format, parse, isAfter, isBefore, addDays, eachDayOfInterval, setHours, setMinutes } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { addDays, addMilliseconds, addMinutes, format, startOfDay, startOfWeek } from 'date-fns';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { getGoogleCalendarBusyIntervals, hasBusyIntervalConflict, hasGoogleCalendarConflict, type BusyInterval } from './google-calendar';
 import { ensureDefaultAvailabilitySchedule } from './default-availability';
 
@@ -14,9 +14,9 @@ export interface AvailableSlot {
   endTime: string; // ISO string
 }
 
-function resolveScheduleForEventType(et: any) {
+function resolveScheduleForEventType(et: any, scheduleOwnerId = et.userId) {
   const schedules = availabilitySchedules().findMany({
-    where: { userId: et.userId },
+    where: { userId: scheduleOwnerId },
     orderBy: { updatedAt: 'desc' },
   });
 
@@ -41,8 +41,39 @@ function resolveScheduleForEventType(et: any) {
   if (assignedSchedule) return assignedSchedule.schedule;
   if (schedules[0]) return schedules[0];
 
-  const user = users().findById(et.userId);
-  return ensureDefaultAvailabilitySchedule(et.userId, user?.timezone || 'America/New_York');
+  const user = users().findById(scheduleOwnerId);
+  return ensureDefaultAvailabilitySchedule(scheduleOwnerId, user?.timezone || 'America/New_York');
+}
+
+function getInviteeDayRange(dateStr: string, timezone: string) {
+  const start = fromZonedTime(`${dateStr}T00:00:00`, timezone);
+  const end = addDays(start, 1);
+  return { start, end };
+}
+
+function getHostDateCandidates(dateStr: string, inviteeTimezone: string, hostTimezone: string) {
+  const { start, end } = getInviteeDayRange(dateStr, inviteeTimezone);
+  return [...new Set([
+    formatInTimeZone(start, hostTimezone, 'yyyy-MM-dd'),
+    formatInTimeZone(addMilliseconds(end, -1), hostTimezone, 'yyyy-MM-dd'),
+  ])];
+}
+
+function getBookingBuffers(booking: any) {
+  const eventType = eventTypes().findById(booking.eventTypeId);
+  return {
+    before: eventType?.bufferBefore || 0,
+    after: eventType?.bufferAfter || 0,
+  };
+}
+
+function getHostDayKey(date: Date, timezone: string) {
+  return formatInTimeZone(date, timezone, 'yyyy-MM-dd');
+}
+
+function getHostWeekKey(date: Date, timezone: string) {
+  const zonedDate = new Date(formatInTimeZone(date, timezone, "yyyy-MM-dd'T'HH:mm:ss"));
+  return format(startOfWeek(zonedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
 }
 
 export function getAvailabilityForDate(
@@ -78,11 +109,13 @@ export async function generateTimeSlots(
   dateStr: string, // YYYY-MM-DD
   inviteeTimezone: string,
   preloadedBusyIntervals?: BusyInterval[],
+  hostIdOverride?: string,
 ): Promise<AvailableSlot[]> {
   const et = eventTypes().findById(eventTypeId);
   if (!et || !et.isActive) return [];
 
-  const schedule = resolveScheduleForEventType(et);
+  const hostId = hostIdOverride || et.userId;
+  const schedule = resolveScheduleForEventType(et, hostId);
 
   if (!schedule) return [];
 
@@ -92,36 +125,39 @@ export async function generateTimeSlots(
   const bufferBefore = et.bufferBefore || 0;
   const bufferAfter = et.bufferAfter || 0;
   const minNotice = et.minNotice || 0;
+  const { start: inviteeDayStart, end: inviteeDayEnd } = getInviteeDayRange(dateStr, inviteeTimezone);
+  const hostDateCandidates = getHostDateCandidates(dateStr, inviteeTimezone, hostTimezone);
 
-  // Get availability windows for this date
-  const windows = getAvailabilityForDate(schedule.id, dateStr);
-  if (windows.length === 0) return [];
-
-  // Get existing bookings for the host on this date
-  const dayStart = dateStr + 'T00:00:00.000Z';
-  const dayEnd = dateStr + 'T23:59:59.999Z';
+  const dayStart = addDays(inviteeDayStart, -1).toISOString();
+  const dayEnd = addDays(inviteeDayEnd, 1).toISOString();
 
   const existingBookings = bookings().findMany({
-    where: { hostId: et.userId, status: 'confirmed' },
-  }).filter(b => {
-    const bookingDate = b.startTime.substring(0, 10);
-    return bookingDate === dateStr;
+    where: { hostId, status: 'confirmed' },
+  }).filter((b: any) => {
+    const bookingStart = new Date(b.startTime);
+    const bookingEnd = new Date(b.endTime);
+    return bookingStart < new Date(dayEnd) && bookingEnd > new Date(dayStart);
   });
 
-  const googleBusyIntervals = et.userId
+  const googleBusyIntervals = hostId
     ? (preloadedBusyIntervals || await getGoogleCalendarBusyIntervals(
-      et.userId,
+      hostId,
       dayStart,
       dayEnd,
     ))
     : [];
+  const eventBookings = bookings().findMany({
+    where: { eventTypeId, status: 'confirmed' },
+  });
+  const dailyCounts = new Map<string, number>();
+  const weeklyCounts = new Map<string, number>();
 
-  // Check daily limit
-  if (et.dailyLimit) {
-    const todayBookings = bookings().findMany({
-      where: { eventTypeId, status: 'confirmed' },
-    }).filter(b => b.startTime.substring(0, 10) === dateStr);
-    if (todayBookings.length >= et.dailyLimit) return [];
+  for (const booking of eventBookings) {
+    const bookingStart = new Date(booking.startTime);
+    const dayKey = getHostDayKey(bookingStart, hostTimezone);
+    dailyCounts.set(dayKey, (dailyCounts.get(dayKey) || 0) + 1);
+    const weekKey = getHostWeekKey(bookingStart, hostTimezone);
+    weeklyCounts.set(weekKey, (weeklyCounts.get(weekKey) || 0) + 1);
   }
 
   const now = new Date();
@@ -129,50 +165,65 @@ export async function generateTimeSlots(
 
   const slots: AvailableSlot[] = [];
 
-  for (const window of windows) {
-    // Parse window times in host timezone
-    const [startH, startM] = window.startTime.split(':').map(Number);
-    const [endH, endM] = window.endTime.split(':').map(Number);
+  for (const hostDate of hostDateCandidates) {
+    const windows = getAvailabilityForDate(schedule.id, hostDate);
+    for (const window of windows) {
+      let slotStart = fromZonedTime(`${hostDate}T${window.startTime}:00`, hostTimezone);
+      const windowEnd = fromZonedTime(`${hostDate}T${window.endTime}:00`, hostTimezone);
 
-    // Create date objects in host timezone
-    let slotStart = new Date(`${dateStr}T${window.startTime}:00`);
-    const windowEnd = new Date(`${dateStr}T${window.endTime}:00`);
+      while (slotStart < windowEnd) {
+        const slotEnd = addMinutes(slotStart, duration);
 
-    while (slotStart < windowEnd) {
-      const slotEnd = addMinutes(slotStart, duration);
+        if (slotEnd > windowEnd) break;
+        if (slotStart < inviteeDayStart || slotStart >= inviteeDayEnd) {
+          slotStart = addMinutes(slotStart, interval);
+          continue;
+        }
 
-      if (slotEnd > windowEnd) break;
+        // Check minimum notice
+        if (slotStart < minBookingTime) {
+          slotStart = addMinutes(slotStart, interval);
+          continue;
+        }
 
-      // Check minimum notice
-      if (slotStart < minBookingTime) {
+        // Check max future days
+        if (et.maxFutureDays) {
+          const maxDate = addDays(now, et.maxFutureDays);
+          if (slotStart > maxDate) break;
+        }
+
+        const hostDayKey = getHostDayKey(slotStart, hostTimezone);
+        if (et.dailyLimit && (dailyCounts.get(hostDayKey) || 0) >= et.dailyLimit) {
+          slotStart = addMinutes(slotStart, interval);
+          continue;
+        }
+
+        const hostWeekKey = getHostWeekKey(slotStart, hostTimezone);
+        if (et.weeklyLimit && (weeklyCounts.get(hostWeekKey) || 0) >= et.weeklyLimit) {
+          slotStart = addMinutes(slotStart, interval);
+          continue;
+        }
+
+        // Check conflicts with existing bookings (including buffers on both sides)
+        const slotWithBufferStart = addMinutes(slotStart, -bufferBefore);
+        const slotWithBufferEnd = addMinutes(slotEnd, bufferAfter);
+
+        const hasConflict = existingBookings.some((booking: any) => {
+          const buffers = getBookingBuffers(booking);
+          const bStart = addMinutes(new Date(booking.startTime), -buffers.before);
+          const bEnd = addMinutes(new Date(booking.endTime), buffers.after);
+          return slotWithBufferStart < bEnd && slotWithBufferEnd > bStart;
+        }) || hasBusyIntervalConflict(googleBusyIntervals, slotWithBufferStart, slotWithBufferEnd);
+
+        if (!hasConflict) {
+          slots.push({
+            time: slotStart.toISOString(),
+            endTime: slotEnd.toISOString(),
+          });
+        }
+
         slotStart = addMinutes(slotStart, interval);
-        continue;
       }
-
-      // Check max future days
-      if (et.maxFutureDays) {
-        const maxDate = addDays(now, et.maxFutureDays);
-        if (slotStart > maxDate) break;
-      }
-
-      // Check conflicts with existing bookings (including buffers)
-      const slotWithBufferStart = addMinutes(slotStart, -bufferBefore);
-      const slotWithBufferEnd = addMinutes(slotEnd, bufferAfter);
-
-      const hasConflict = existingBookings.some(booking => {
-        const bStart = new Date(booking.startTime);
-        const bEnd = new Date(booking.endTime);
-        return slotWithBufferStart < bEnd && slotWithBufferEnd > bStart;
-      }) || hasBusyIntervalConflict(googleBusyIntervals, slotWithBufferStart, slotWithBufferEnd);
-
-      if (!hasConflict) {
-        slots.push({
-          time: slotStart.toISOString(),
-          endTime: slotEnd.toISOString(),
-        });
-      }
-
-      slotStart = addMinutes(slotStart, interval);
     }
   }
 
@@ -204,13 +255,13 @@ export async function getAvailableDates(
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const date = new Date(dateStr + 'T12:00:00Z');
+    const { start: inviteeDayStart } = getInviteeDayRange(dateStr, timezone);
 
     // Skip past dates
-    if (date < startOfDay(now)) continue;
+    if (inviteeDayStart < startOfDay(now)) continue;
 
     // Skip dates beyond max future
-    if (date > addDays(now, maxFutureDays)) continue;
+    if (inviteeDayStart > addDays(now, maxFutureDays)) continue;
 
     // Check if there's any availability on this day
     const windows = getAvailabilityForDate(schedule.id, dateStr);

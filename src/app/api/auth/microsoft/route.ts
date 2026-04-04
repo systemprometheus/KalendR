@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { findMatchingTimezone } from '@/lib/timezones';
 
 export async function GET(req: NextRequest) {
   const clientId = process.env.MICROSOFT_CLIENT_ID;
   const tenantId = process.env.MICROSOFT_TENANT_ID || 'common';
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io'}/api/auth/callback/microsoft`;
   const intent = req.nextUrl.searchParams.get('intent') === 'signup' ? 'signup' : 'login';
+  const timezoneParam = req.nextUrl.searchParams.get('timezone') || '';
+  const timezone = timezoneParam ? findMatchingTimezone(timezoneParam) : '';
 
   if (!clientId) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
@@ -22,7 +25,19 @@ export async function GET(req: NextRequest) {
     state: intent,
   });
 
-  return NextResponse.redirect(
+  const response = NextResponse.redirect(
     `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params.toString()}`
   );
+
+  if (timezone) {
+    response.cookies.set('oauth_signup_timezone', timezone, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 10 * 60,
+      path: '/',
+    });
+  }
+
+  return response;
 }

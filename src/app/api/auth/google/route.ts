@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { findMatchingTimezone } from '@/lib/timezones';
 
 export async function GET(req: NextRequest) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io'}/api/auth/callback/google`;
   const intent = req.nextUrl.searchParams.get('intent') === 'signup' ? 'signup' : 'login';
+  const timezoneParam = req.nextUrl.searchParams.get('timezone') || '';
+  const timezone = timezoneParam ? findMatchingTimezone(timezoneParam) : '';
 
   if (!clientId) {
     // OAuth not configured — redirect back to login with error
@@ -23,5 +26,16 @@ export async function GET(req: NextRequest) {
     state: intent,
   });
 
-  return NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+  const response = NextResponse.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+  if (timezone) {
+    response.cookies.set('oauth_signup_timezone', timezone, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 10 * 60,
+      path: '/',
+    });
+  }
+
+  return response;
 }

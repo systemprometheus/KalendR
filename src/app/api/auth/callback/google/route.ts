@@ -3,12 +3,15 @@ import { cookies } from 'next/headers';
 import { users } from '@/lib/db';
 import { createSession, generateSlug } from '@/lib/auth';
 import { ensureUserWorkspace } from '@/lib/default-user-setup';
+import { findMatchingTimezone } from '@/lib/timezones';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const error = req.nextUrl.searchParams.get('error');
   const intent = req.nextUrl.searchParams.get('state') === 'signup' ? 'signup' : 'login';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
+  const cookieStore = await cookies();
+  const signupTimezone = findMatchingTimezone(cookieStore.get('oauth_signup_timezone')?.value || 'America/New_York');
 
   if (error || !code) {
     return NextResponse.redirect(new URL('/login?error=Google+authentication+cancelled', appUrl));
@@ -60,7 +63,7 @@ export async function GET(req: NextRequest) {
         name,
         slug: generateSlug(name),
         passwordHash: '', // No password for OAuth users
-        timezone: 'America/New_York',
+        timezone: signupTimezone,
         plan: 'free',
         onboardingComplete: false,
         googleId: googleUser.id,
@@ -80,7 +83,6 @@ export async function GET(req: NextRequest) {
     const sessionToken = await createSession(user.id);
 
     // Set cookie
-    const cookieStore = await cookies();
     cookieStore.set('session', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -88,6 +90,7 @@ export async function GET(req: NextRequest) {
       maxAge: 30 * 24 * 60 * 60, // 30 days
       path: '/',
     });
+    cookieStore.delete('oauth_signup_timezone');
 
     if (intent === 'signup' && (isNewUser || !user.onboardingComplete)) {
       return NextResponse.redirect(new URL('/onboarding', appUrl));
