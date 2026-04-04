@@ -1147,6 +1147,19 @@ function getGoogleMeetFallbackCalendar(
   )) || null;
 }
 
+function getPreferredGoogleMeetCalendar(
+  userId: string,
+  currentCalendar: ConnectedGoogleCalendar,
+) {
+  const calendars = getAllConnectedGoogleCalendars(userId)
+    .filter((calendar) => canWriteGoogleCalendar(calendar));
+
+  return calendars.find((calendar) => (
+    calendar.accountExternalId === currentCalendar.accountExternalId
+    && calendar.isPrimary
+  )) || calendars.find((calendar) => calendar.isPrimary) || currentCalendar;
+}
+
 async function createGoogleCalendarEventOnCalendar(params: {
   calendar: ConnectedGoogleCalendar;
   booking: Booking;
@@ -1287,6 +1300,18 @@ export async function createGoogleCalendarEventForBooking(params: {
       locationType: booking.locationType || eventType.locationType,
     });
     return null;
+  }
+
+  if (wantsGoogleMeet) {
+    const preferredMeetCalendar = getPreferredGoogleMeetCalendar(booking.hostId, calendar);
+    if (preferredMeetCalendar.id !== calendar.id) {
+      console.warn('Using preferred primary Google calendar for Meet event creation', {
+        bookingId: booking.id,
+        selectedCalendarId: calendar.calendarId,
+        preferredCalendarId: preferredMeetCalendar.calendarId,
+      });
+      calendar = preferredMeetCalendar;
+    }
   }
 
   let googleEvent = await createGoogleCalendarEventOnCalendar({
