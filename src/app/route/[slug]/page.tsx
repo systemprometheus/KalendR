@@ -151,7 +151,14 @@ export default function RoutingFormPage({ params }: PageProps) {
           </button>
         </form>
 
-        <p className="text-xs text-center text-gray-400 mt-6">Powered by kalendr.io</p>
+        <a
+          href="https://kalendr.io"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-6 block text-xs text-center text-gray-400 hover:text-gray-500 transition-colors"
+        >
+          Powered by kalendr.io
+        </a>
       </div>
     </div>
   );

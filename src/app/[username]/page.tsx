@@ -59,7 +59,9 @@ export default function UserProfilePage({ params }: PageProps) {
         {/* Powered by ribbon */}
         <div className="absolute top-0 right-0 overflow-hidden w-28 h-28 z-10">
           <a
-            href="/"
+            href="https://kalendr.io"
+            target="_blank"
+            rel="noopener noreferrer"
             className="absolute top-[22px] right-[-32px] w-[170px] text-center py-1.5 bg-gray-600 text-white text-[10px] font-semibold tracking-wide uppercase rotate-45 shadow-sm hover:bg-gray-700 transition-colors"
           >
             Powered by kalendr.io

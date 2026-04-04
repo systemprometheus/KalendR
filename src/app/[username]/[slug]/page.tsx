@@ -262,7 +262,14 @@ export default function BookingPage({ params }: PageProps) {
               <p className="flex items-center gap-2"><Globe className="w-4 h-4 text-gray-400" /> {timezone}</p>
             </div>
           </div>
-          <p className="text-xs text-gray-400">Powered by kalendr.io</p>
+          <a
+            href="https://kalendr.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-gray-400 hover:text-gray-500 transition-colors"
+          >
+            Powered by kalendr.io
+          </a>
         </div>
       </div>
     );
@@ -469,7 +476,14 @@ export default function BookingPage({ params }: PageProps) {
                   </button>
                 </form>
 
-                <p className="text-xs text-center text-gray-400 mt-4">Powered by kalendr.io</p>
+                <a
+                  href="https://kalendr.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 block text-xs text-center text-gray-400 hover:text-gray-500 transition-colors"
+                >
+                  Powered by kalendr.io
+                </a>
               </div>
             )}
           </div>
