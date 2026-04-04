@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAppUrl } from '@/lib/app-url';
+import { sanitizeEmbedSegment } from '@/lib/validation';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const username = searchParams.get('username');
-  const slug = searchParams.get('slug');
+  const username = sanitizeEmbedSegment(searchParams.get('username'));
+  const slug = sanitizeEmbedSegment(searchParams.get('slug'));
   const type = searchParams.get('type') || 'inline'; // inline, popup-widget, popup-text
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  if (!username || !slug || !['inline', 'popup-widget', 'popup-text'].includes(type)) {
+    return NextResponse.json({ error: 'Invalid embed parameters' }, { status: 400 });
+  }
+
+  const appUrl = getAppUrl();
   const embedUrl = `${appUrl}/embed/${username}/${slug}`;
   const bookingUrl = `${appUrl}/${username}/${slug}`;
+  const embedUrlLiteral = JSON.stringify(embedUrl);
 
   let code = '';
 
@@ -18,7 +25,7 @@ export async function GET(req: NextRequest) {
 <script>
 (function() {
   var iframe = document.createElement('iframe');
-  iframe.src = '${embedUrl}';
+  iframe.src = ${embedUrlLiteral};
   iframe.style.width = '100%';
   iframe.style.height = '100%';
   iframe.style.border = 'none';
@@ -39,7 +46,7 @@ export async function GET(req: NextRequest) {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
     overlay.onclick = function(e) { if(e.target===overlay) document.body.removeChild(overlay); };
     var iframe = document.createElement('iframe');
-    iframe.src = '${embedUrl}';
+    iframe.src = ${embedUrlLiteral};
     iframe.style.cssText = 'width:90%;max-width:900px;height:85vh;border:none;border-radius:16px;background:white;';
     overlay.appendChild(iframe);
     document.body.appendChild(overlay);
@@ -49,9 +56,24 @@ export async function GET(req: NextRequest) {
 </script>`;
   } else if (type === 'popup-text') {
     code = `<!-- kalendr.io Popup Link -->
-<a href="#" onclick="(function(){var o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';o.onclick=function(e){if(e.target===o)document.body.removeChild(o)};var i=document.createElement('iframe');i.src='${embedUrl}';i.style.cssText='width:90%;max-width:900px;height:85vh;border:none;border-radius:16px;background:white;';o.appendChild(i);document.body.appendChild(o)})();return false;" style="color:#03b2d1;font-weight:600;text-decoration:none;">
-  Book a Demo
-</a>`;
+<a href="#" id="kalendr-popup-link" style="color:#03b2d1;font-weight:600;text-decoration:none;">Book a Demo</a>
+<script>
+(function() {
+  var link = document.getElementById('kalendr-popup-link');
+  if (!link) return;
+  link.addEventListener('click', function(event) {
+    event.preventDefault();
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
+    overlay.onclick = function(e) { if (e.target === overlay) document.body.removeChild(overlay); };
+    var iframe = document.createElement('iframe');
+    iframe.src = ${embedUrlLiteral};
+    iframe.style.cssText = 'width:90%;max-width:900px;height:85vh;border:none;border-radius:16px;background:white;';
+    overlay.appendChild(iframe);
+    document.body.appendChild(overlay);
+  });
+})();
+</script>`;
   }
 
   return NextResponse.json({

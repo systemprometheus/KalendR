@@ -1,23 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { users, passwordResets } from '@/lib/db';
 import { generateToken, hashPassword, verifyToken } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
+import { getAppUrl } from '@/lib/app-url';
+import { normalizeEmail } from '@/lib/validation';
 
 function hashResetToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
 }
 
 // Request password reset
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const { email } = await req.json();
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email) {
+    if (!normalizedEmail) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
-    const user = users().findFirst({ where: { email: email.toLowerCase() } });
+    const user = users().findFirst({ where: { email: normalizedEmail } });
 
     // Always return success to prevent email enumeration
     if (!user) {
@@ -34,7 +37,7 @@ export async function POST(req: NextRequest) {
       used: false,
     });
 
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
+    const resetUrl = `${getAppUrl()}/reset-password?token=${token}`;
 
     await sendEmail({
       to: user.email,
@@ -64,7 +67,7 @@ export async function POST(req: NextRequest) {
 }
 
 // Complete password reset
-export async function PUT(req: NextRequest) {
+export async function PUT(req: Request) {
   try {
     const { token, password } = await req.json();
 

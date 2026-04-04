@@ -11,6 +11,12 @@ import {
 } from '@/lib/google-calendar';
 import { addMinutes, format } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
+import {
+  isValidDateTime,
+  normalizeEmail,
+  normalizeTimezone,
+  sanitizeText,
+} from '@/lib/validation';
 
 function parseBookingMetadata(metadata?: string | null) {
   if (!metadata) return {};
@@ -215,8 +221,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { eventTypeId, startTime, timezone, inviteeName, inviteeEmail, inviteePhone,
             inviteeCompany, inviteeJobTitle, inviteeNotes, customResponses, source } = body;
+    const normalizedInviteeEmail = normalizeEmail(inviteeEmail);
+    const normalizedInviteeName = sanitizeText(inviteeName, 120);
+    const normalizedTimezone = normalizeTimezone(timezone);
 
-    if (!eventTypeId || !startTime || !inviteeName || !inviteeEmail) {
+    if (!eventTypeId || !isValidDateTime(startTime) || !normalizedInviteeName || !normalizedInviteeEmail) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -242,7 +251,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const bookingTimezone = timezone || 'America/New_York';
+    const bookingTimezone = normalizeTimezone(timezone);
     const inviteeDate = formatInTimeZone(start, bookingTimezone, 'yyyy-MM-dd');
     const bookableSlots = await generateTimeSlots(et.id, inviteeDate, bookingTimezone, undefined, hostId);
     const isRequestedSlotAvailable = bookableSlots.some((slot) => slot.time === start.toISOString());
@@ -280,17 +289,17 @@ export async function POST(req: NextRequest) {
       endTime: end.toISOString(),
       timezone: bookingTimezone,
       status: bookingStatus,
-      inviteeName,
-      inviteeEmail,
-      inviteePhone: inviteePhone || null,
-      inviteeCompany: inviteeCompany || null,
-      inviteeJobTitle: inviteeJobTitle || null,
-      inviteeNotes: inviteeNotes || null,
+      inviteeName: normalizedInviteeName,
+      inviteeEmail: normalizedInviteeEmail,
+      inviteePhone: sanitizeText(inviteePhone, 40),
+      inviteeCompany: sanitizeText(inviteeCompany, 120),
+      inviteeJobTitle: sanitizeText(inviteeJobTitle, 120),
+      inviteeNotes: sanitizeText(inviteeNotes, 2000),
       customResponses: customResponses ? JSON.stringify(customResponses) : null,
       locationType,
       locationValue,
       meetingUrl,
-      source: source || 'booking_page',
+      source: sanitizeText(source, 80) || 'booking_page',
       cancelToken: randomUUID(),
       rescheduleToken: randomUUID(),
     });
@@ -347,7 +356,7 @@ export async function POST(req: NextRequest) {
         hostName: host.name,
         hostEmail: host.email,
         inviteeName,
-        inviteeEmail,
+        inviteeEmail: normalizedInviteeEmail,
         description: `Meeting booked via Kalendrio with ${host.name}.`,
         location: emailLocation,
         meetingUrl: fallbackMeetingUrl,
@@ -377,13 +386,14 @@ export async function POST(req: NextRequest) {
       if (shouldAttachCalendarInvite) {
         confirmEmail.attachments = [calendarInviteAttachment];
       }
+      confirmEmail.to = normalizedInviteeEmail;
       const confirmEmailPromise = sendEmail(confirmEmail);
 
       // Send notification to host
       const hostEmail = hostNotificationEmail({
         hostName: host.name,
         inviteeName,
-        inviteeEmail,
+        inviteeEmail: normalizedInviteeEmail,
         eventTitle: et.title,
         dateTime: dateTimeStr,
         timezone: bookingTimezone,

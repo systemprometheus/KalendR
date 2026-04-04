@@ -1,23 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { users } from '@/lib/db';
-import { createSession, generateSlug } from '@/lib/auth';
+import { createSession, generateSlug, parseOAuthState } from '@/lib/auth';
 import { ensureUserWorkspace } from '@/lib/default-user-setup';
 import { findMatchingTimezone } from '@/lib/timezones';
+import { getAppUrl } from '@/lib/app-url';
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const error = req.nextUrl.searchParams.get('error');
-  const intent = req.nextUrl.searchParams.get('state') === 'signup' ? 'signup' : 'login';
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
+  const appUrl = getAppUrl();
   const cookieStore = await cookies();
+  const state = req.nextUrl.searchParams.get('state');
+  const storedState = cookieStore.get('google_oauth_state')?.value;
+  const intent = parseOAuthState(state) || 'login';
   const signupTimezone = findMatchingTimezone(cookieStore.get('oauth_signup_timezone')?.value || 'America/New_York');
 
-  if (error || !code) {
+  const clearStateCookie = () => cookieStore.set('google_oauth_state', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 0,
+    path: '/',
+  });
+
+  if (error || !code || !storedState || storedState !== state) {
+    clearStateCookie();
     return NextResponse.redirect(new URL('/login?error=Google+authentication+cancelled', appUrl));
   }
 
   try {
+    clearStateCookie();
+
     // Exchange code for tokens
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -62,7 +76,7 @@ export async function GET(req: NextRequest) {
         email: normalizedEmail,
         name,
         slug: generateSlug(name),
-        passwordHash: '', // No password for OAuth users
+        passwordHash: 'oauth-only-account',
         timezone: signupTimezone,
         plan: 'free',
         onboardingComplete: false,

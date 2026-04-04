@@ -6,7 +6,7 @@ import { ensureUserWorkspace } from '@/lib/default-user-setup';
 
 export async function POST(req: NextRequest) {
   try {
-    let user = await getCurrentUser();
+    let user = await getCurrentUser() as any;
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

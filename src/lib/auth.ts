@@ -44,6 +44,9 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  if (!hash || typeof hash !== 'string' || hash.length < 20) {
+    return false;
+  }
   return bcrypt.compare(password, hash);
 }
 
@@ -229,6 +232,20 @@ export function generateSlug(name: string): string {
     .replace(/^-|-$/g, '');
   const suffix = randomBytes(3).toString('hex');
   return `${base}-${suffix}`;
+}
+
+export function createOAuthState(intent: 'login' | 'signup' = 'login') {
+  const nonce = randomBytes(24).toString('hex');
+  return `${intent}:${nonce}`;
+}
+
+export function parseOAuthState(state: string | null | undefined): 'login' | 'signup' | null {
+  if (!state) return null;
+  const [intent, nonce] = state.split(':', 2);
+  if (!nonce || (intent !== 'login' && intent !== 'signup')) {
+    return null;
+  }
+  return intent;
 }
 
 export async function createAgentAccessToken(

@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireAuthWithScopes } from '@/lib/auth';
 import { organizations } from '@/lib/db';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const { user } = await requireAuthWithScopes(['profile:read']);
 

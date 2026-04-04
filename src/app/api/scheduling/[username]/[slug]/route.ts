@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { users, eventTypes, availabilitySchedules, availabilityRules } from '@/lib/db';
 import { generateTimeSlots, getAvailableDates } from '@/lib/availability';
+import { normalizeTimezone } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-    const timezone = searchParams.get('timezone') || user.timezone || 'America/New_York';
+    const timezone = normalizeTimezone(searchParams.get('timezone'), user.timezone || 'America/New_York');
 
     // Find event type
     const foundEventType = eventTypes().findFirst({ where: { userId: user.id, slug, isActive: true, isArchived: false } });
@@ -82,16 +83,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
 
     // If requesting available dates for a month
     if (month !== null && year) {
+      const parsedMonth = Number.parseInt(month, 10);
+      const parsedYear = Number.parseInt(year, 10);
+      if (!Number.isInteger(parsedMonth) || parsedMonth < 0 || parsedMonth > 11 || !Number.isInteger(parsedYear) || parsedYear < 2020 || parsedYear > 2100) {
+        return NextResponse.json({ error: 'Invalid month or year' }, { status: 400 });
+      }
       response.availableDates = await getAvailableDates(
         et.id,
-        parseInt(month),
-        parseInt(year),
+        parsedMonth,
+        parsedYear,
         timezone,
       );
     }
 
     // If requesting time slots for a specific date
     if (date) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
+      }
       response.timeSlots = await generateTimeSlots(et.id, date, timezone);
     }
 

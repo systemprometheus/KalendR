@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { organizations } from '@/lib/db';
 import { PlanKey, getDefaultSeatsForPlan } from '@/lib/plans';
 
 const SELF_SERVE_FREE_PLANS = new Set<PlanKey>(['free', 'teams_free']);
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) {

@@ -4,6 +4,7 @@ import { bookings, eventTypes, users } from '@/lib/db';
 import { sendEmail, cancellationEmail } from '@/lib/email';
 import { deleteGoogleCalendarEventForBooking, ensureGoogleCalendarWatches } from '@/lib/google-calendar';
 import { format } from 'date-fns';
+import { isValidDateTime, sanitizeText } from '@/lib/validation';
 
 function parseBookingMetadata(metadata?: string | null) {
   if (!metadata) return null;
@@ -28,7 +29,23 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ uid:
 
     return NextResponse.json({
       booking: {
-        ...booking,
+        id: booking.id,
+        uid: booking.uid,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        timezone: booking.timezone,
+        status: booking.status,
+        inviteeName: booking.inviteeName,
+        inviteeEmail: booking.inviteeEmail,
+        inviteePhone: booking.inviteePhone || null,
+        inviteeCompany: booking.inviteeCompany || null,
+        inviteeJobTitle: booking.inviteeJobTitle || null,
+        inviteeNotes: booking.inviteeNotes || null,
+        locationType: booking.locationType,
+        locationValue: booking.locationValue,
+        meetingUrl: booking.meetingUrl || null,
+        source: booking.source || null,
+        createdAt: booking.createdAt,
         eventType: et ? { title: et.title, description: et.description, color: et.color, duration: et.duration, confirmationMessage: et.confirmationMessage } : null,
         host: host ? { name: host.name, email: host.email, avatarUrl: host.avatarUrl, timezone: host.timezone } : null,
       },
@@ -76,7 +93,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
 
       bookings().update(booking.id, {
         status: 'cancelled',
-        cancelReason: reason || null,
+        cancelReason: sanitizeText(reason, 500),
         cancelledAt: new Date().toISOString(),
       });
 
@@ -129,7 +146,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ uid:
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
 
-      if (!newStartTime) {
+      if (!isValidDateTime(newStartTime)) {
         return NextResponse.json({ error: 'New start time is required' }, { status: 400 });
       }
 

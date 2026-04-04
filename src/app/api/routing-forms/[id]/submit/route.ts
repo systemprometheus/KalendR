@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { routingForms, routingFormResponses, eventTypes, users } from '@/lib/db';
+import { sanitizeOptionalHttpUrl } from '@/lib/validation';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,6 +11,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const { responses } = await req.json();
+    if (!responses || typeof responses !== 'object' || Array.isArray(responses)) {
+      return NextResponse.json({ error: 'Responses are required' }, { status: 400 });
+    }
 
     // Evaluate routing rules
     let routes: any[] = [];
@@ -44,7 +48,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         };
       }
     } else if (destination.type === 'external_url') {
-      routedTo = { type: 'external_url', url: destination.value };
+      const safeUrl = sanitizeOptionalHttpUrl(destination.value);
+      routedTo = safeUrl ? { type: 'external_url', url: safeUrl } : { type: 'message', message: 'Invalid destination URL configured.' };
     } else {
       routedTo = { type: 'message', message: destination.value };
     }

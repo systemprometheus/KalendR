@@ -1,13 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { users, organizations, availabilitySchedules, availabilityRules } from '@/lib/db';
 import { hashPassword, createSession, generateSlug } from '@/lib/auth';
 import { getDefaultSeatsForPlan } from '@/lib/plans';
+import { normalizeEmail, normalizeTimezone, sanitizeText } from '@/lib/validation';
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const { name, email, password, timezone } = await req.json();
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedName = sanitizeText(name, 120);
+    const normalizedTimezone = normalizeTimezone(timezone);
 
-    if (!name || !email || !password) {
+    if (!normalizedName || !normalizedEmail || typeof password !== 'string' || !password) {
       return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 });
     }
 
@@ -16,29 +20,29 @@ export async function POST(req: NextRequest) {
     }
 
     // Check existing user
-    const existing = users().findFirst({ where: { email: email.toLowerCase() } });
+    const existing = users().findFirst({ where: { email: normalizedEmail } });
     if (existing) {
       return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
     }
 
     const passwordHash = await hashPassword(password);
-    const slug = generateSlug(name);
+    const slug = generateSlug(normalizedName);
 
     // Create organization
     const org = organizations().create({
-      name: `${name}'s Organization`,
-      slug: generateSlug(name + '-org'),
+      name: `${normalizedName}'s Organization`,
+      slug: generateSlug(normalizedName + '-org'),
       plan: 'free',
       planSeats: getDefaultSeatsForPlan('free'),
     });
 
     // Create user
     const user = users().create({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       passwordHash,
-      name,
+      name: normalizedName,
       slug,
-      timezone: timezone || 'America/New_York',
+      timezone: normalizedTimezone,
       locale: 'en',
       onboardingComplete: false,
       organizationId: org.id,
@@ -49,7 +53,7 @@ export async function POST(req: NextRequest) {
     const schedule = availabilitySchedules().create({
       name: 'Working Hours',
       userId: user.id,
-      timezone: timezone || 'America/New_York',
+      timezone: normalizedTimezone,
       isDefault: true,
     });
 

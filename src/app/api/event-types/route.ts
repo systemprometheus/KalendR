@@ -1,10 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { requireAuthWithScopes } from '@/lib/auth';
 import { eventTypes, eventTypeHosts, users } from '@/lib/db';
 import { ensureDefaultAvailabilitySchedule } from '@/lib/default-availability';
+import {
+  parseIntegerInRange,
+  sanitizeOptionalHttpUrl,
+  sanitizeSlug,
+  sanitizeText,
+} from '@/lib/validation';
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: Request) {
   try {
     const { user } = await requireAuthWithScopes(['event-types:read']);
 
@@ -25,7 +31,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const { user } = await requireAuthWithScopes(['event-types:write']);
 
@@ -35,11 +41,12 @@ export async function POST(req: NextRequest) {
             customQuestions, confirmationMessage, redirectUrl, requiresConfirmation, maxInvitees,
             roundRobinMode, availabilityScheduleId, durationOptions, brandingColor, hideBranding,
             teamId, hosts } = body;
+    const normalizedTitle = sanitizeText(title, 120);
 
-    if (!title) return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+    if (!normalizedTitle) return NextResponse.json({ error: 'Title is required' }, { status: 400 });
 
     // Generate unique slug
-    let finalSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    let finalSlug = sanitizeSlug(slug) || sanitizeSlug(normalizedTitle) || 'event';
     const existing = eventTypes().findFirst({ where: { userId: user.id, slug: finalSlug } });
     if (existing) {
       finalSlug = `${finalSlug}-${randomBytes(3).toString('hex')}`;
@@ -50,10 +57,10 @@ export async function POST(req: NextRequest) {
       : ensureDefaultAvailabilitySchedule(user.id, user.timezone || 'America/New_York');
 
     const et = eventTypes().create({
-      title,
+      title: normalizedTitle,
       slug: finalSlug,
-      description: description || '',
-      duration: duration || 30,
+      description: sanitizeText(description, 2000) || '',
+      duration: parseIntegerInRange(duration, { min: 5, max: 720, fallback: 30 }) ?? 30,
       color: color || '#03b2d1',
       isActive: true,
       isArchived: false,
@@ -62,20 +69,20 @@ export async function POST(req: NextRequest) {
       teamId: teamId || null,
       eventTypeKind: eventTypeKind || 'one_on_one',
       locationType: locationType || 'google_meet',
-      locationValue: locationValue || null,
-      minNotice: minNotice ?? 240,
-      maxFutureDays: maxFutureDays ?? 60,
-      slotInterval: slotInterval || null,
-      bufferBefore: bufferBefore ?? 0,
-      bufferAfter: bufferAfter ?? 0,
-      dailyLimit: dailyLimit || null,
-      weeklyLimit: weeklyLimit || null,
-      maxInvitees: maxInvitees ?? 1,
+      locationValue: sanitizeText(locationValue, 500),
+      minNotice: parseIntegerInRange(minNotice, { min: 0, max: 60 * 24 * 30, fallback: 240 }) ?? 240,
+      maxFutureDays: parseIntegerInRange(maxFutureDays, { min: 1, max: 365, fallback: 60 }) ?? 60,
+      slotInterval: parseIntegerInRange(slotInterval, { min: 5, max: 720, fallback: null }),
+      bufferBefore: parseIntegerInRange(bufferBefore, { min: 0, max: 1440, fallback: 0 }) ?? 0,
+      bufferAfter: parseIntegerInRange(bufferAfter, { min: 0, max: 1440, fallback: 0 }) ?? 0,
+      dailyLimit: parseIntegerInRange(dailyLimit, { min: 1, max: 1000, fallback: null }),
+      weeklyLimit: parseIntegerInRange(weeklyLimit, { min: 1, max: 5000, fallback: null }),
+      maxInvitees: parseIntegerInRange(maxInvitees, { min: 1, max: 1000, fallback: 1 }) ?? 1,
       roundRobinMode: roundRobinMode || null,
       availabilityScheduleId: availabilityScheduleId || schedule?.id || null,
       customQuestions: customQuestions ? JSON.stringify(customQuestions) : null,
-      confirmationMessage: confirmationMessage || null,
-      redirectUrl: redirectUrl || null,
+      confirmationMessage: sanitizeText(confirmationMessage, 2000),
+      redirectUrl: sanitizeOptionalHttpUrl(redirectUrl),
       requiresConfirmation: requiresConfirmation ?? false,
       durationOptions: durationOptions ? JSON.stringify(durationOptions) : null,
       brandingColor: brandingColor || null,

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { eventTypes, eventTypeHosts, bookings } from '@/lib/db';
+import {
+  parseIntegerInRange,
+  sanitizeOptionalHttpUrl,
+  sanitizeSlug,
+  sanitizeText,
+} from '@/lib/validation';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -36,9 +42,47 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // If updating slug, check uniqueness
     if (body.slug && body.slug !== et.slug) {
+      body.slug = sanitizeSlug(body.slug);
+      if (!body.slug) {
+        return NextResponse.json({ error: 'Invalid slug' }, { status: 400 });
+      }
       const existing = eventTypes().findFirst({ where: { userId: user.id, slug: body.slug } });
       if (existing && existing.id !== id) {
         return NextResponse.json({ error: 'This slug is already in use' }, { status: 409 });
+      }
+    }
+
+    if (body.title !== undefined) {
+      body.title = sanitizeText(body.title, 120);
+      if (!body.title) {
+        return NextResponse.json({ error: 'Title is required' }, { status: 400 });
+      }
+    }
+
+    if (body.description !== undefined) body.description = sanitizeText(body.description, 2000) || '';
+    if (body.locationValue !== undefined) body.locationValue = sanitizeText(body.locationValue, 500);
+    if (body.confirmationMessage !== undefined) body.confirmationMessage = sanitizeText(body.confirmationMessage, 2000);
+    if (body.redirectUrl !== undefined) body.redirectUrl = sanitizeOptionalHttpUrl(body.redirectUrl);
+
+    const boundedNumberFields: Array<[string, { min: number; max: number; fallback?: number | null }]> = [
+      ['duration', { min: 5, max: 720 }],
+      ['minNotice', { min: 0, max: 60 * 24 * 30 }],
+      ['maxFutureDays', { min: 1, max: 365 }],
+      ['slotInterval', { min: 5, max: 720, fallback: null }],
+      ['bufferBefore', { min: 0, max: 1440 }],
+      ['bufferAfter', { min: 0, max: 1440 }],
+      ['dailyLimit', { min: 1, max: 1000, fallback: null }],
+      ['weeklyLimit', { min: 1, max: 5000, fallback: null }],
+      ['maxInvitees', { min: 1, max: 1000 }],
+    ];
+
+    for (const [field, options] of boundedNumberFields) {
+      if (body[field] !== undefined) {
+        const parsed = parseIntegerInRange(body[field], options);
+        if (parsed === null && body[field] !== null && options.fallback === undefined) {
+          return NextResponse.json({ error: `Invalid ${field}` }, { status: 400 });
+        }
+        body[field] = parsed;
       }
     }
 

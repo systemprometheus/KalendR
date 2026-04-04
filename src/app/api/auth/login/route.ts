@@ -1,16 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { users } from '@/lib/db';
 import { verifyPassword, createSession } from '@/lib/auth';
+import { normalizeEmail } from '@/lib/validation';
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email || !password) {
+    if (!normalizedEmail || typeof password !== 'string' || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const user = users().findFirst({ where: { email: email.toLowerCase() } });
+    const user = users().findFirst({ where: { email: normalizedEmail } });
     if (!user) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     }
