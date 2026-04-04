@@ -6,6 +6,7 @@ import { generateTimeSlots, selectRoundRobinHost, checkCollectiveAvailability } 
 import { sendEmail, bookingConfirmationEmail, hostNotificationEmail } from '@/lib/email';
 import {
   createGoogleCalendarEventForBooking,
+  ensureGoogleCalendarEventForBooking,
   ensureGoogleCalendarWatches,
   hasGoogleCalendarConflict,
 } from '@/lib/google-calendar';
@@ -163,8 +164,36 @@ export async function GET(req: NextRequest) {
       items = items.filter((b: any) => b.startTime < now || b.status !== 'confirmed');
     }
 
+    const repairedItems = await Promise.all(items.map(async (booking: any) => {
+      const eventType = eventTypes().findById(booking.eventTypeId);
+      const host = users().findById(booking.hostId);
+
+      if (
+        booking.status === 'confirmed'
+        && booking.locationType === 'google_meet'
+        && !booking.meetingUrl
+        && eventType
+        && host
+      ) {
+        try {
+          return await ensureGoogleCalendarEventForBooking({
+            booking,
+            eventType,
+            host,
+          });
+        } catch (error) {
+          console.error('Failed to repair Google Meet booking', {
+            bookingId: booking.id,
+            error,
+          });
+        }
+      }
+
+      return booking;
+    }));
+
     // Enrich with event type info
-    const enriched = items.map((b: any) => {
+    const enriched = repairedItems.map((b: any) => {
       const et = eventTypes().findById(b.eventTypeId);
       return { ...b, eventType: et ? { title: et.title, color: et.color, duration: et.duration } : null };
     });

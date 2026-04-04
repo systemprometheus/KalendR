@@ -1009,6 +1009,15 @@ function buildGoogleEventDescription(params: {
   return lines.join('\n');
 }
 
+function bookingWantsGoogleMeet(booking: Booking, eventType?: EventType | null) {
+  const looksLikeMeet = (value?: string | null) => Boolean(value && value.toLowerCase().includes('google meet'));
+
+  return booking.locationType === 'google_meet'
+    || eventType?.locationType === 'google_meet'
+    || looksLikeMeet(booking.locationValue)
+    || looksLikeMeet(eventType?.locationValue);
+}
+
 function extractGoogleMeetingUrl(event: Pick<GoogleCalendarEvent, 'conferenceData' | 'hangoutLink'>) {
   const entryPoint = Array.isArray(event.conferenceData?.entryPoints)
     ? event.conferenceData.entryPoints.find((point) => point?.entryPointType === 'video')
@@ -1417,6 +1426,118 @@ export async function deleteGoogleCalendarEventForBooking(params: {
   }
 
   return true;
+}
+
+export async function ensureGoogleCalendarEventForBooking(params: {
+  booking: Booking;
+  eventType: EventType;
+  host: User;
+}) {
+  const { booking, eventType, host } = params;
+  const wantsGoogleMeet = bookingWantsGoogleMeet(booking, eventType);
+  const metadata = extractGoogleCalendarMetadata(booking.metadata);
+  const eventId = metadata?.eventId || booking.calendarEventId;
+
+  if (booking.status !== 'confirmed') {
+    return booking;
+  }
+
+  if (new Date(booking.endTime).getTime() < Date.now()) {
+    return booking;
+  }
+
+  if (!eventId) {
+    const createdEvent = await createGoogleCalendarEventForBooking({ booking, eventType, host });
+    if (!createdEvent) {
+      return booking;
+    }
+
+    const updated = bookings().update(booking.id, {
+      calendarEventId: createdEvent.eventId,
+      meetingUrl: createdEvent.meetingUrl || booking.meetingUrl,
+      locationValue: wantsGoogleMeet
+        ? (createdEvent.meetingUrl || booking.locationValue || 'Google Meet')
+        : booking.locationValue,
+      metadata: JSON.stringify({
+        ...parseBookingMetadata(booking.metadata),
+        googleCalendar: {
+          connectedCalendarId: createdEvent.connectedCalendarId,
+          calendarId: createdEvent.calendarId,
+          eventId: createdEvent.eventId,
+          htmlLink: createdEvent.htmlLink || '',
+        },
+      }),
+    }) as Booking | null;
+
+    return updated || booking;
+  }
+
+  let calendars = getAllConnectedGoogleCalendars(booking.hostId);
+  let calendar = calendars.find((item) => item.id === metadata?.connectedCalendarId)
+    || calendars.find((item) => item.calendarId === metadata?.calendarId && item.addEventsTo)
+    || calendars.find((item) => item.calendarId === metadata?.calendarId)
+    || getGoogleAddToCalendar(booking.hostId);
+
+  if (!calendar) {
+    calendar = await recoverGoogleCalendarConnection(booking.hostId);
+    calendars = getAllConnectedGoogleCalendars(booking.hostId);
+    calendar = calendar
+      || calendars.find((item) => item.id === metadata?.connectedCalendarId)
+      || calendars.find((item) => item.calendarId === metadata?.calendarId)
+      || null;
+  }
+
+  if (!calendar) {
+    return booking;
+  }
+
+  let event = await fetchGoogleCalendarEvent(calendar, eventId);
+
+  if (!event) {
+    const recreated = await createGoogleCalendarEventForBooking({ booking, eventType, host });
+    if (!recreated) {
+      return booking;
+    }
+
+    const updated = bookings().update(booking.id, {
+      calendarEventId: recreated.eventId,
+      meetingUrl: recreated.meetingUrl || booking.meetingUrl,
+      locationValue: wantsGoogleMeet
+        ? (recreated.meetingUrl || booking.locationValue || 'Google Meet')
+        : booking.locationValue,
+      metadata: JSON.stringify({
+        ...parseBookingMetadata(booking.metadata),
+        googleCalendar: {
+          connectedCalendarId: recreated.connectedCalendarId,
+          calendarId: recreated.calendarId,
+          eventId: recreated.eventId,
+          htmlLink: recreated.htmlLink || '',
+        },
+      }),
+    }) as Booking | null;
+
+    return updated || booking;
+  }
+
+  let meetingUrl = extractGoogleMeetingUrl(event);
+  if (wantsGoogleMeet && !meetingUrl) {
+    const patchedEvent = await requestGoogleMeetConference(calendar, eventId);
+    if (patchedEvent) {
+      event = patchedEvent;
+      meetingUrl = extractGoogleMeetingUrl(event);
+    }
+
+    if (!meetingUrl) {
+      const awaited = await waitForGoogleMeetConference(calendar, eventId);
+      if (awaited.latestEvent) {
+        event = awaited.latestEvent;
+        meetingUrl = awaited.meetingUrl || meetingUrl;
+      }
+    }
+  }
+
+  const updated = applyGoogleCalendarChangeToBooking(booking, calendar, event);
+  return updated || booking;
 }
 
 function readGoogleWatchNotification(headers: Headers): GoogleWatchNotification | null {
