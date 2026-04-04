@@ -42,6 +42,18 @@ export default function BookingsPage() {
     }
   };
 
+  const locationLabel = (booking: any) => {
+    if (booking.locationType === 'google_meet') {
+      return booking.meetingUrl ? 'Join Google Meet' : 'Google Meet link missing';
+    }
+
+    if (booking.locationType === 'zoom') {
+      return booking.meetingUrl ? 'Join Zoom' : 'Zoom';
+    }
+
+    return (booking.locationType || '').replace(/_/g, ' ');
+  };
+
   const tabs = [
     { id: 'upcoming', label: 'Upcoming' },
     { id: 'past', label: 'Past' },
@@ -88,10 +100,22 @@ export default function BookingsPage() {
                       <Clock className="w-3.5 h-3.5" />
                       {format(parseISO(booking.startTime), 'h:mm a')} - {format(parseISO(booking.endTime), 'h:mm a')}
                     </span>
-                    <span className="flex items-center gap-1">
-                      {locationIcon(booking.locationType)}
-                      {(booking.locationType || '').replace(/_/g, ' ')}
-                    </span>
+                    {booking.meetingUrl ? (
+                      <a
+                        href={booking.meetingUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-[#03b2d1] hover:text-[#0292ab] hover:underline"
+                      >
+                        {locationIcon(booking.locationType)}
+                        {locationLabel(booking)}
+                      </a>
+                    ) : (
+                      <span className={`flex items-center gap-1 ${booking.locationType === 'google_meet' ? 'text-amber-600' : ''}`}>
+                        {locationIcon(booking.locationType)}
+                        {locationLabel(booking)}
+                      </span>
+                    )}
                   </div>
                   {booking.inviteeCompany && <p className="text-xs text-gray-400 mt-1">{booking.inviteeCompany}{booking.inviteeJobTitle ? ` • ${booking.inviteeJobTitle}` : ''}</p>}
                 </div>
