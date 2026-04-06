@@ -21,6 +21,18 @@ const DISALLOWED_UA_PATTERNS = [
   /python-requests/i,
   /wget/i,
 ];
+const DEFAULT_BLOCKED_IPS = new Set([
+  '51.120.80.210',
+  '190.153.94.31',
+  '34.69.7.113',
+  '115.132.195.220',
+]);
+const ENV_BLOCKED_IPS = new Set(
+  (process.env.BLOCKED_IPS ?? '')
+    .split(',')
+    .map((ip) => ip.trim())
+    .filter((ip) => ip.length > 0)
+);
 
 let lastCleanupAt = 0;
 
@@ -157,6 +169,10 @@ export function middleware(request: NextRequest): NextResponse {
   const userAgent = request.headers.get('user-agent') ?? '';
   const normalizedUa = userAgent.trim();
   const routeLimit = resolveLimit(pathname, userAgent);
+
+  if (DEFAULT_BLOCKED_IPS.has(ip) || ENV_BLOCKED_IPS.has(ip)) {
+    return new NextResponse('Forbidden', { status: 403 });
+  }
 
   if (!normalizedUa) {
     return new NextResponse('Forbidden', { status: 403 });
