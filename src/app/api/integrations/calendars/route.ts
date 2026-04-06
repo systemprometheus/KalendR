@@ -210,7 +210,33 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const { user } = await requireAuthWithScopes(['calendars:write']);
-    const { calendarId } = await req.json();
+    const { calendarId, provider } = await req.json();
+
+    if (provider && typeof provider === 'string') {
+      if (provider !== 'google') {
+        return NextResponse.json({ error: 'Bulk disconnect is only supported for Google calendars' }, { status: 400 });
+      }
+
+      const googleCalendars = connectedCalendars().findMany({
+        where: { userId: user.id, provider: 'google' },
+      }) as any[];
+
+      if (googleCalendars.length === 0) {
+        return NextResponse.json({ error: 'No Google calendars connected' }, { status: 404 });
+      }
+
+      let removedCount = 0;
+      for (const calendar of googleCalendars) {
+        const removed = await disconnectGoogleCalendar({ userId: user.id, calendarId: calendar.id });
+        if (removed) removedCount += 1;
+      }
+
+      if (removedCount === 0) {
+        return NextResponse.json({ error: 'Failed to disconnect Google calendars' }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true, removedCount });
+    }
 
     if (!calendarId || typeof calendarId !== 'string') {
       return NextResponse.json({ error: 'calendarId is required' }, { status: 400 });

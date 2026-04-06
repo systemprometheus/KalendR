@@ -172,6 +172,32 @@ export default function IntegrationsPage() {
     }
   };
 
+  const disconnectGoogleCalendars = async () => {
+    const confirmed = window.confirm(
+      'Disconnect all Google calendars? Kalendrio will stop syncing bookings and conflicts with Google until reconnected.'
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch('/api/integrations/calendars', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'google' }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setToast({ type: 'error', message: data.error || 'Failed to disconnect Google calendars' });
+        return;
+      }
+
+      await refreshIntegrations();
+      setToast({ type: 'success', message: 'Google calendar disconnected' });
+    } catch {
+      setToast({ type: 'error', message: 'Failed to disconnect Google calendars' });
+    }
+  };
+
   const isConnected = (provider: string) => {
     if (provider === 'google_meet') return hasGoogleBookingCalendar;
     // Check calendars for google/microsoft
@@ -227,7 +253,19 @@ export default function IntegrationsPage() {
 
       {connectedCalendars.length > 0 && (
         <Card>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Connected Calendars</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-gray-900">Connected Calendars</h2>
+            {connectedCalendars.some((cal: any) => cal.provider === 'google') && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-red-200 text-red-600 hover:bg-red-50"
+                onClick={disconnectGoogleCalendars}
+              >
+                Disconnect Google
+              </Button>
+            )}
+          </div>
           <div className="space-y-3">
             {connectedCalendars.map(cal => (
               <div key={cal.id} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
