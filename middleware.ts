@@ -24,12 +24,6 @@ const DISALLOWED_UA_PATTERNS = [
   /python-requests/i,
   /wget/i,
 ];
-const DEFAULT_BLOCKED_IPS = new Set([
-  '51.120.80.210',
-  '190.153.94.31',
-  '34.69.7.113',
-  '115.132.195.220',
-]);
 const ENV_BLOCKED_IPS = new Set(
   (process.env.BLOCKED_IPS ?? '')
     .split(',')
@@ -77,10 +71,7 @@ function resolveClientIp(request: NextRequest): string {
 }
 
 function isBlockedIp(request: NextRequest, resolvedIp: string): boolean {
-  const blocked = new Set<string>([
-    ...DEFAULT_BLOCKED_IPS,
-    ...ENV_BLOCKED_IPS,
-  ]);
+  const blocked = ENV_BLOCKED_IPS;
 
   if (blocked.has(resolvedIp)) return true;
 
