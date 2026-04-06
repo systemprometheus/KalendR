@@ -3,9 +3,11 @@ import { requireAuthWithScopes } from '@/lib/auth';
 import { connectedCalendars } from '@/lib/db';
 import {
   buildGoogleCalendarOAuthUrl,
+  disconnectGoogleCalendar,
   ensureGoogleCalendarWatches,
   recoverGoogleCalendarConnection,
 } from '@/lib/google-calendar';
+import { getIntegrationSetupStatus } from '@/lib/integration-config';
 
 export async function GET(req: NextRequest) {
   try {
@@ -60,11 +62,13 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kalendr.io';
 
     if (provider === 'google') {
+      const setup = getIntegrationSetupStatus('google');
       const clientId = process.env.GOOGLE_CLIENT_ID;
-      if (!clientId) {
+      if (!setup.isConfigured || !clientId) {
         return NextResponse.json({
           error: 'Google Calendar integration not configured',
-          message: 'Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in environment variables',
+          message: setup.helpText,
+          missingEnvVars: setup.missingEnvVars,
           stubbed: true,
         }, { status: 501 });
       }
@@ -73,11 +77,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (provider === 'microsoft') {
+      const setup = getIntegrationSetupStatus('microsoft');
       const clientId = process.env.MICROSOFT_CLIENT_ID;
-      if (!clientId) {
+      if (!setup.isConfigured || !clientId) {
         return NextResponse.json({
           error: 'Microsoft Calendar integration not configured',
-          message: 'Set MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET in environment variables',
+          message: setup.helpText,
+          missingEnvVars: setup.missingEnvVars,
           stubbed: true,
         }, { status: 501 });
       }
@@ -190,6 +196,43 @@ export async function PATCH(req: NextRequest) {
         createdAt: updated.createdAt,
       },
     });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message.startsWith('Forbidden:')) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { user } = await requireAuthWithScopes(['calendars:write']);
+    const { calendarId } = await req.json();
+
+    if (!calendarId || typeof calendarId !== 'string') {
+      return NextResponse.json({ error: 'calendarId is required' }, { status: 400 });
+    }
+
+    const calendar = connectedCalendars().findById(calendarId);
+    if (!calendar || calendar.userId !== user.id) {
+      return NextResponse.json({ error: 'Calendar not found' }, { status: 404 });
+    }
+
+    let removed = false;
+    if (calendar.provider === 'google') {
+      removed = await disconnectGoogleCalendar({ userId: user.id, calendarId: calendar.id });
+    } else {
+      removed = connectedCalendars().delete(calendar.id);
+    }
+
+    if (!removed) {
+      return NextResponse.json({ error: 'Failed to disconnect calendar' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

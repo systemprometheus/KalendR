@@ -741,6 +741,35 @@ export async function ensureGoogleCalendarWatches(userId: string) {
   }
 }
 
+export async function disconnectGoogleCalendar(params: { userId: string; calendarId: string }) {
+  const { userId, calendarId } = params;
+  const calendar = connectedCalendars().findById(calendarId) as RawConnectedGoogleCalendar | null;
+  if (!calendar || calendar.userId !== userId || calendar.provider !== 'google') {
+    return false;
+  }
+
+  const normalized = normalizeGoogleCalendar(calendar);
+  await stopGoogleCalendarWatch(normalized).catch((error) => {
+    console.error('Failed to stop Google Calendar watch during disconnect', error);
+  });
+
+  const removed = connectedCalendars().delete(calendarId);
+  if (!removed) return false;
+
+  const remainingGoogleCalendars = getAllConnectedGoogleCalendars(userId);
+  if (remainingGoogleCalendars.length > 0 && !remainingGoogleCalendars.some((item) => item.addEventsTo)) {
+    const fallback = remainingGoogleCalendars.find((item) => canWriteGoogleCalendar(item))
+      || remainingGoogleCalendars[0];
+    connectedCalendars().update(fallback.id, { addEventsTo: true });
+  }
+
+  await ensureGoogleCalendarWatches(userId).catch((error) => {
+    console.error('Failed to refresh Google Calendar watches after disconnect', error);
+  });
+
+  return true;
+}
+
 export async function syncGoogleCalendarsFromOAuth(params: {
   userId: string;
   accessToken: string;
