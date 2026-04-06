@@ -45,20 +45,43 @@ function maybeCleanup(now: number): void {
   }
 }
 
-function resolveClientIp(request: NextRequest): string {
+function getCandidateIps(request: NextRequest): string[] {
+  const candidates = new Set<string>();
+
+  const realIp = request.headers.get('x-real-ip')?.trim();
+  if (realIp) candidates.add(realIp);
+
+  const cfIp = request.headers.get('cf-connecting-ip')?.trim();
+  if (cfIp) candidates.add(cfIp);
+
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
-    const first = forwarded.split(',')[0]?.trim();
-    if (first) return first;
+    for (const raw of forwarded.split(',')) {
+      const ip = raw.trim();
+      if (ip) candidates.add(ip);
+    }
   }
 
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
+  return [...candidates];
+}
 
-  const cfIp = request.headers.get('cf-connecting-ip');
-  if (cfIp) return cfIp.trim();
+function resolveClientIp(request: NextRequest): string {
+  const candidates = getCandidateIps(request);
+  if (candidates.length === 0) return 'unknown';
 
-  return 'unknown';
+  // Prefer x-real-ip / cf-connecting-ip candidates when available, otherwise fallback.
+  return candidates[0];
+}
+
+function isBlockedIp(request: NextRequest, resolvedIp: string): boolean {
+  const blocked = new Set<string>([
+    ...DEFAULT_BLOCKED_IPS,
+    ...ENV_BLOCKED_IPS,
+  ]);
+
+  if (blocked.has(resolvedIp)) return true;
+
+  return getCandidateIps(request).some((ip) => blocked.has(ip));
 }
 
 function resolveLimit(pathname: string, userAgent: string): number {
@@ -170,7 +193,7 @@ export function middleware(request: NextRequest): NextResponse {
   const normalizedUa = userAgent.trim();
   const routeLimit = resolveLimit(pathname, userAgent);
 
-  if (DEFAULT_BLOCKED_IPS.has(ip) || ENV_BLOCKED_IPS.has(ip)) {
+  if (isBlockedIp(request, ip)) {
     return new NextResponse('Forbidden', { status: 403 });
   }
 
