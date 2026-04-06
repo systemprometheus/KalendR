@@ -9,10 +9,12 @@ const counters = new Map<string, Counter>();
 
 const WINDOW_MS = 60_000;
 const CLEANUP_INTERVAL_MS = 5 * 60_000;
-const GLOBAL_API_LIMIT = 120;
-const AUTH_LIMIT = 30;
-const INTEGRATION_LIMIT = 40;
-const LOW_UA_LIMIT = 20;
+const GLOBAL_IP_LIMIT = 150;
+const GLOBAL_API_LIMIT = 80;
+const GLOBAL_WEB_LIMIT = 50;
+const AUTH_LIMIT = 20;
+const INTEGRATION_LIMIT = 30;
+const LOW_UA_LIMIT = 10;
 
 let lastCleanupAt = 0;
 
@@ -42,41 +44,57 @@ function resolveClientIp(request: NextRequest): string {
 }
 
 function resolveLimit(pathname: string, userAgent: string): number {
+  const isApiRoute = pathname.startsWith('/api/');
   const isAuthRoute = pathname.startsWith('/api/auth/');
   const isIntegrationRoute = pathname.startsWith('/api/integrations/');
   const hasLowSignalUa = userAgent.trim().length < 6;
 
+  if (hasLowSignalUa) return LOW_UA_LIMIT;
   if (isAuthRoute) return AUTH_LIMIT;
   if (isIntegrationRoute) return INTEGRATION_LIMIT;
-  if (hasLowSignalUa) return LOW_UA_LIMIT;
-  return GLOBAL_API_LIMIT;
+  if (isApiRoute) return GLOBAL_API_LIMIT;
+  return GLOBAL_WEB_LIMIT;
 }
 
-export function middleware(request: NextRequest): NextResponse {
-  const now = Date.now();
-  maybeCleanup(now);
-
-  const ip = resolveClientIp(request);
-  const pathname = request.nextUrl.pathname;
-  const userAgent = request.headers.get('user-agent') ?? '';
-  const limit = resolveLimit(pathname, userAgent);
-  const bucketKey = `${ip}:${pathname}`;
-
-  const existing = counters.get(bucketKey);
+function consumeBucket(key: string, limit: number, now: number) {
+  const existing = counters.get(key);
 
   if (!existing || existing.resetAt <= now) {
-    counters.set(bucketKey, { count: 1, resetAt: now + WINDOW_MS });
-
-    const response = NextResponse.next();
-    response.headers.set('X-RateLimit-Limit', String(limit));
-    response.headers.set('X-RateLimit-Remaining', String(limit - 1));
-    response.headers.set('X-RateLimit-Reset', String(now + WINDOW_MS));
-    return response;
+    counters.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    return {
+      exceeded: false,
+      resetAt: now + WINDOW_MS,
+      remaining: Math.max(0, limit - 1),
+    };
   }
 
   if (existing.count >= limit) {
-    const retryAfter = Math.max(1, Math.ceil((existing.resetAt - now) / 1000));
+    return {
+      exceeded: true,
+      resetAt: existing.resetAt,
+      remaining: 0,
+    };
+  }
 
+  existing.count += 1;
+  counters.set(key, existing);
+
+  return {
+    exceeded: false,
+    resetAt: existing.resetAt,
+    remaining: Math.max(0, limit - existing.count),
+  };
+}
+
+function limitResponse(
+  isApiRoute: boolean,
+  limit: number,
+  resetAt: number,
+  now: number
+): NextResponse {
+  const retryAfter = Math.max(1, Math.ceil((resetAt - now) / 1000));
+
+  if (isApiRoute) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again shortly.' },
       {
@@ -85,22 +103,72 @@ export function middleware(request: NextRequest): NextResponse {
           'Retry-After': String(retryAfter),
           'X-RateLimit-Limit': String(limit),
           'X-RateLimit-Remaining': '0',
-          'X-RateLimit-Reset': String(existing.resetAt),
+          'X-RateLimit-Reset': String(resetAt),
         },
       }
     );
   }
 
-  existing.count += 1;
-  counters.set(bucketKey, existing);
+  return new NextResponse('Too many requests. Please try again shortly.', {
+    status: 429,
+    headers: {
+      'Retry-After': String(retryAfter),
+      'X-RateLimit-Limit': String(limit),
+      'X-RateLimit-Remaining': '0',
+      'X-RateLimit-Reset': String(resetAt),
+    },
+  });
+}
+
+function attachHeaders(
+  response: NextResponse,
+  limit: number,
+  remaining: number,
+  resetAt: number
+): void {
+  response.headers.set('X-RateLimit-Limit', String(limit));
+  response.headers.set('X-RateLimit-Remaining', String(remaining));
+  response.headers.set('X-RateLimit-Reset', String(resetAt));
+}
+
+function attachGlobalHeaders(
+  response: NextResponse,
+  remaining: number,
+  resetAt: number
+): void {
+  response.headers.set('X-GlobalRateLimit-Limit', String(GLOBAL_IP_LIMIT));
+  response.headers.set('X-GlobalRateLimit-Remaining', String(remaining));
+  response.headers.set('X-GlobalRateLimit-Reset', String(resetAt));
+}
+
+export function middleware(request: NextRequest): NextResponse {
+  const now = Date.now();
+  maybeCleanup(now);
+
+  const ip = resolveClientIp(request);
+  const pathname = request.nextUrl.pathname;
+  const isApiRoute = pathname.startsWith('/api/');
+  const userAgent = request.headers.get('user-agent') ?? '';
+  const routeLimit = resolveLimit(pathname, userAgent);
+
+  const globalBucket = consumeBucket(`global:${ip}`, GLOBAL_IP_LIMIT, now);
+  if (globalBucket.exceeded) {
+    return limitResponse(isApiRoute, GLOBAL_IP_LIMIT, globalBucket.resetAt, now);
+  }
+
+  const pathBucket = consumeBucket(`path:${ip}:${pathname}`, routeLimit, now);
+  if (pathBucket.exceeded) {
+    return limitResponse(isApiRoute, routeLimit, pathBucket.resetAt, now);
+  }
 
   const response = NextResponse.next();
-  response.headers.set('X-RateLimit-Limit', String(limit));
-  response.headers.set('X-RateLimit-Remaining', String(Math.max(0, limit - existing.count)));
-  response.headers.set('X-RateLimit-Reset', String(existing.resetAt));
+  attachHeaders(response, routeLimit, pathBucket.remaining, pathBucket.resetAt);
+  attachGlobalHeaders(response, globalBucket.remaining, globalBucket.resetAt);
   return response;
 }
 
 export const config = {
-  matcher: ['/api/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt|xml)$).*)',
+  ],
 };
