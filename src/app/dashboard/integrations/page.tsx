@@ -355,19 +355,31 @@ export default function IntegrationsPage() {
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant={connected ? 'outline' : 'primary'}
-                      size="sm"
-                      onClick={() => handleConnect(integration.provider)}
-                      disabled={isLoading || needsSetup}
-                    >
-                      {isLoading ? (
-                        <span className="flex items-center gap-1">
-                          <span className="animate-spin-slow w-3 h-3 border border-current border-t-transparent rounded-full" />
-                          Connecting...
-                        </span>
-                      ) : connected ? 'Manage' : needsSetup ? 'Needs setup' : 'Connect'}
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant={connected ? 'outline' : 'primary'}
+                        size="sm"
+                        onClick={() => handleConnect(integration.provider)}
+                        disabled={isLoading || needsSetup}
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center gap-1">
+                            <span className="animate-spin-slow w-3 h-3 border border-current border-t-transparent rounded-full" />
+                            Connecting...
+                          </span>
+                        ) : connected ? 'Reconnect' : needsSetup ? 'Needs setup' : 'Connect'}
+                      </Button>
+                      {integration.provider === 'google' && connected && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                          onClick={disconnectGoogleCalendars}
+                        >
+                          Disconnect
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </Card>
               );
