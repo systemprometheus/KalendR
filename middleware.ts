@@ -15,6 +15,9 @@ const GLOBAL_WEB_LIMIT = 50;
 const AUTH_LIMIT = 20;
 const INTEGRATION_LIMIT = 30;
 const LOW_UA_LIMIT = 10;
+const LOGIN_LIMIT = 8;
+const BOOKING_CREATE_LIMIT = 12;
+const HEALTH_LIMIT = 60;
 const DISALLOWED_UA_PATTERNS = [
   /req\/v\d+/i,
   /cms-checker/i,
@@ -84,12 +87,15 @@ function isBlockedIp(request: NextRequest, resolvedIp: string): boolean {
   return getCandidateIps(request).some((ip) => blocked.has(ip));
 }
 
-function resolveLimit(pathname: string, userAgent: string): number {
+function resolveLimit(pathname: string, userAgent: string, method: string): number {
   const isApiRoute = pathname.startsWith('/api/');
   const isAuthRoute = pathname.startsWith('/api/auth/');
   const isIntegrationRoute = pathname.startsWith('/api/integrations/');
   const hasLowSignalUa = userAgent.trim().length < 6;
 
+  if (pathname === '/api/auth/login' && method.toUpperCase() === 'POST') return LOGIN_LIMIT;
+  if (pathname === '/api/bookings' && method.toUpperCase() === 'POST') return BOOKING_CREATE_LIMIT;
+  if (pathname === '/api/health') return HEALTH_LIMIT;
   if (hasLowSignalUa) return LOW_UA_LIMIT;
   if (isAuthRoute) return AUTH_LIMIT;
   if (isIntegrationRoute) return INTEGRATION_LIMIT;
@@ -182,6 +188,13 @@ function attachGlobalHeaders(
   response.headers.set('X-GlobalRateLimit-Reset', String(resetAt));
 }
 
+function attachSecurityHeaders(response: NextResponse): void {
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+}
+
 export function middleware(request: NextRequest): NextResponse {
   const now = Date.now();
   maybeCleanup(now);
@@ -189,9 +202,10 @@ export function middleware(request: NextRequest): NextResponse {
   const ip = resolveClientIp(request);
   const pathname = request.nextUrl.pathname;
   const isApiRoute = pathname.startsWith('/api/');
+  const method = request.method;
   const userAgent = request.headers.get('user-agent') ?? '';
   const normalizedUa = userAgent.trim();
-  const routeLimit = resolveLimit(pathname, userAgent);
+  const routeLimit = resolveLimit(pathname, userAgent, method);
 
   if (isBlockedIp(request, ip)) {
     return new NextResponse('Forbidden', { status: 403 });
@@ -218,6 +232,7 @@ export function middleware(request: NextRequest): NextResponse {
   const response = NextResponse.next();
   attachHeaders(response, routeLimit, pathBucket.remaining, pathBucket.resetAt);
   attachGlobalHeaders(response, globalBucket.remaining, globalBucket.resetAt);
+  attachSecurityHeaders(response);
   return response;
 }
 
