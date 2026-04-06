@@ -15,6 +15,12 @@ const GLOBAL_WEB_LIMIT = 50;
 const AUTH_LIMIT = 20;
 const INTEGRATION_LIMIT = 30;
 const LOW_UA_LIMIT = 10;
+const DISALLOWED_UA_PATTERNS = [
+  /req\/v\d+/i,
+  /cms-checker/i,
+  /python-requests/i,
+  /wget/i,
+];
 
 let lastCleanupAt = 0;
 
@@ -149,7 +155,16 @@ export function middleware(request: NextRequest): NextResponse {
   const pathname = request.nextUrl.pathname;
   const isApiRoute = pathname.startsWith('/api/');
   const userAgent = request.headers.get('user-agent') ?? '';
+  const normalizedUa = userAgent.trim();
   const routeLimit = resolveLimit(pathname, userAgent);
+
+  if (!normalizedUa) {
+    return new NextResponse('Forbidden', { status: 403 });
+  }
+
+  if (DISALLOWED_UA_PATTERNS.some((pattern) => pattern.test(normalizedUa))) {
+    return new NextResponse('Forbidden', { status: 403 });
+  }
 
   const globalBucket = consumeBucket(`global:${ip}`, GLOBAL_IP_LIMIT, now);
   if (globalBucket.exceeded) {
