@@ -11,6 +11,13 @@ import {
   StripeIcon, SalesforceIcon, HubSpotIcon, SlackIcon
 } from '@/components/ui/brand-icons';
 
+type IntegrationSetupState = {
+  provider: string;
+  isConfigured: boolean;
+  missingEnvVars: string[];
+  helpText: string;
+};
+
 const INTEGRATIONS = [
   { id: 'google', name: 'Google Calendar', description: 'Sync events, check availability, and add new meetings', Icon: GoogleCalendarIcon, category: 'Calendars', provider: 'google' },
   { id: 'microsoft', name: 'Microsoft Outlook', description: 'Connect your Outlook calendar for availability and events', Icon: MicrosoftOutlookIcon, category: 'Calendars', provider: 'microsoft' },
@@ -25,6 +32,7 @@ const INTEGRATIONS = [
 export default function IntegrationsPage() {
   const [connectedCalendars, setConnectedCalendars] = useState<any[]>([]);
   const [connectedIntegrations, setConnectedIntegrations] = useState<any[]>([]);
+  const [setupByProvider, setSetupByProvider] = useState<Record<string, IntegrationSetupState>>({});
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -58,6 +66,11 @@ export default function IntegrationsPage() {
     ]).then(([calData, intData]) => {
       setConnectedCalendars(calData.calendars || []);
       setConnectedIntegrations(intData.integrations || []);
+      setSetupByProvider(
+        Object.fromEntries(
+          (intData.setup || []).map((setup: IntegrationSetupState) => [setup.provider, setup])
+        )
+      );
       setLoading(false);
     });
   }, []);
@@ -69,6 +82,11 @@ export default function IntegrationsPage() {
     ]);
     setConnectedCalendars(calData.calendars || []);
     setConnectedIntegrations(intData.integrations || []);
+    setSetupByProvider(
+      Object.fromEntries(
+        (intData.setup || []).map((setup: IntegrationSetupState) => [setup.provider, setup])
+      )
+    );
   };
 
   const hasGoogleBookingCalendar = connectedCalendars.some((calendar: any) => (
@@ -97,7 +115,7 @@ export default function IntegrationsPage() {
       } else if (data.stubbed) {
         setToast({
           type: 'error',
-          message: `${data.error || provider + ' integration not configured'}. Contact the admin to set up credentials.`,
+          message: [data.error, data.message].filter(Boolean).join('. '),
         });
       } else if (data.error) {
         setToast({ type: 'error', message: data.error });
@@ -127,6 +145,30 @@ export default function IntegrationsPage() {
       setToast({ type: 'success', message: 'Calendar settings updated' });
     } catch {
       setToast({ type: 'error', message: 'Failed to update calendar settings' });
+    }
+  };
+
+  const disconnectCalendar = async (calendarId: string) => {
+    const confirmed = window.confirm('Disconnect this calendar? New bookings will no longer sync to it.');
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch('/api/integrations/calendars', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calendarId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setToast({ type: 'error', message: data.error || 'Failed to disconnect calendar' });
+        return;
+      }
+
+      await refreshIntegrations();
+      setToast({ type: 'success', message: 'Calendar disconnected' });
+    } catch {
+      setToast({ type: 'error', message: 'Failed to disconnect calendar' });
     }
   };
 
@@ -206,8 +248,9 @@ export default function IntegrationsPage() {
                       <span>{cal.accountEmail || cal.email}</span>
                       {cal.calendarId && <span className="truncate">{cal.calendarId}</span>}
                     </div>
-                    {cal.provider === 'google' && (
-                      <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {cal.provider === 'google' && (
+                        <>
                         <Button
                           size="sm"
                           variant={cal.addEventsTo ? 'primary' : 'outline'}
@@ -222,8 +265,17 @@ export default function IntegrationsPage() {
                         >
                           {cal.checkForConflicts ? 'Conflict checks on' : 'Enable conflict checks'}
                         </Button>
-                      </div>
-                    )}
+                        </>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-red-200 text-red-600 hover:bg-red-50"
+                        onClick={() => disconnectCalendar(cal.id)}
+                      >
+                        Disconnect
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -242,6 +294,8 @@ export default function IntegrationsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {INTEGRATIONS.filter(i => i.category === category).map(integration => {
               const connected = isConnected(integration.provider);
+              const setup = setupByProvider[integration.provider];
+              const needsSetup = !connected && setup && !setup.isConfigured;
               const isLoading = connecting === integration.provider;
               const IconComponent = integration.Icon;
               return (
@@ -254,21 +308,27 @@ export default function IntegrationsPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-medium text-gray-900">{integration.name}</h3>
                         {connected && <Badge variant="success">Connected</Badge>}
+                        {needsSetup && <Badge variant="warning">Setup required</Badge>}
                       </div>
                       <p className="text-sm text-gray-500 mt-1">{integration.description}</p>
+                      {needsSetup && (
+                        <p className="mt-2 text-xs text-yellow-700">
+                          {setup.helpText}
+                        </p>
+                      )}
                     </div>
                     <Button
                       variant={connected ? 'outline' : 'primary'}
                       size="sm"
                       onClick={() => handleConnect(integration.provider)}
-                      disabled={isLoading}
+                      disabled={isLoading || needsSetup}
                     >
                       {isLoading ? (
                         <span className="flex items-center gap-1">
                           <span className="animate-spin-slow w-3 h-3 border border-current border-t-transparent rounded-full" />
                           Connecting...
                         </span>
-                      ) : connected ? 'Manage' : 'Connect'}
+                      ) : connected ? 'Manage' : needsSetup ? 'Needs setup' : 'Connect'}
                     </Button>
                   </div>
                 </Card>
